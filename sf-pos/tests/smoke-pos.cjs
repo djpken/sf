@@ -69,6 +69,15 @@ async function main() {
 
   await mustBeVisible(page.getByText('全餐廳狀況'), 'overview title');
   await mustBeVisible(page.getByText('01 桌'), 'selected table operation panel');
+  await mustBeVisible(page.getByText('下一步建議'), 'operation next action label');
+  await mustBeVisible(page.getByText('追蹤回訪或帶往結帳'), 'served table next action');
+  const navIconAudit = await page.evaluate(() => ({
+    iconCount: document.querySelectorAll('.nav-icon svg').length,
+    textIconCount: Array.from(document.querySelectorAll('.nav-icon')).filter((node) => !node.querySelector('svg')).length,
+  }));
+  if (navIconAudit.iconCount < 5 || navIconAudit.textIconCount) {
+    throw new Error(`Expected side navigation to use SVG icons only, got ${JSON.stringify(navIconAudit)}.`);
+  }
 
   const panelBefore = await page.evaluate(() => Math.round(document.querySelector('.operation-panel').getBoundingClientRect().width));
   const handleBox = await page.locator('.panel-resize-handle').boundingBox();
@@ -111,12 +120,19 @@ async function main() {
 
   await page.getByRole('button', { name: /貳樓經典早午餐/ }).click();
   await mustBeVisible(page.getByText('貳樓經典早午餐').first(), 'added menu item');
+  await mustBeVisible(page.getByText('未送廚'), 'unsent ticket line status');
 
   await page.getByRole('button', { name: '送單到廚房' }).click();
   await mustBeVisible(page.getByRole('button', { name: '全部上餐' }), 'kitchen workflow');
+  await mustBeVisible(page.getByText('製作中').first(), 'sent ticket line status');
 
   await page.getByRole('button', { name: '全部上餐' }).click();
   await mustBeVisible(page.getByText('應收金額'), 'checkout amount');
+  await mustBeVisible(page.getByText('收款後列印明細，必要時拆分付款或開立載具。'), 'restaurant checkout note');
+  await mustBeVisible(page.getByRole('button', { name: 'LINE Pay' }), 'line pay option');
+  if (await page.getByText('OTP 驗證').count()) {
+    throw new Error('Expected generic OTP verification copy to be removed from restaurant checkout.');
+  }
 
   await page.getByRole('button', { name: '信用卡' }).click();
   await page.getByRole('button', { name: '完成結帳並清桌' }).click();

@@ -3,6 +3,14 @@ import React from 'react';
 const { zones, tables: initialTables, menu, modifiers } = window.POS_DATA;
 const { statusMeta, fmtMoney, Pill, IconButton, SegmentControl, Stepper, EmptyState } = window.POS_UI;
 
+const NAV_ICONS = {
+  overview: ['M4 5h7v7H4z', 'M13 5h7v4h-7z', 'M13 11h7v8h-7z', 'M4 14h7v5H4z'],
+  zone: ['M4 11l8-7 8 7', 'M6 10v9h12v-9', 'M10 19v-5h4v5'],
+  kitchen: ['M8 14c-1.2-1.4-1.1-3.2.3-4.6', 'M12 15c2-1.8 2.4-4 .8-6', 'M16 14c1.3-1.5 1.2-3.3-.2-4.8', 'M6 18h12', 'M7 21h10'],
+  visits: ['M5 5h14v11H8l-3 3z', 'M8 9h8', 'M8 12h5'],
+  checkout: ['M6 4h12v16H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3'],
+};
+
 const DEVICE_PRESETS = {
   ipadPro11: { label: 'iPad Pro 11"', width: 1194, height: 834, detail: 'Landscape · 11-inch logical viewport' },
   ipadPro129: { label: 'iPad Pro 12.9"', width: 1366, height: 1024, detail: 'Landscape · 12.9-inch logical viewport' },
@@ -209,11 +217,11 @@ function DeviceToolbar({ selected, onSelect, preset }) {
 
 function SideNav({ activeView, setActiveView, stats }) {
   const items = [
-    { id: 'overview', label: '總覽', icon: '▦' },
-    { id: 'my-zone', label: '我的分區', icon: '⌂' },
-    { id: 'kitchen', label: '出菜追蹤', icon: '♨', badge: stats.overdue },
-    { id: 'visits', label: '訪桌紀錄', icon: '▤', badge: stats.waitingVisit },
-    { id: 'checkout', label: '結帳', icon: '▥' },
+    { id: 'overview', label: '總覽', icon: 'overview' },
+    { id: 'my-zone', label: '我的分區', icon: 'zone' },
+    { id: 'kitchen', label: '出菜追蹤', icon: 'kitchen', badge: stats.overdue },
+    { id: 'visits', label: '訪桌紀錄', icon: 'visits', badge: stats.waitingVisit },
+    { id: 'checkout', label: '結帳', icon: 'checkout' },
   ];
 
   return (
@@ -221,7 +229,7 @@ function SideNav({ activeView, setActiveView, stats }) {
       <nav>
         {items.map((item) => (
           <button key={item.id} type="button" className={activeView === item.id ? 'is-active' : ''} onClick={() => setActiveView(item.id)}>
-            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-icon"><SvgIcon name={item.icon} /></span>
             {Boolean(item.badge) && <em>{item.badge}</em>}
             <strong>{item.label}</strong>
           </button>
@@ -232,6 +240,16 @@ function SideNav({ activeView, setActiveView, stats }) {
         <span>值班<br />林佳瑩</span>
       </div>
     </aside>
+  );
+}
+
+function SvgIcon({ name }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {NAV_ICONS[name].map((path) => (
+        <path key={path} d={path} />
+      ))}
+    </svg>
   );
 }
 
@@ -376,7 +394,10 @@ function AlertPanel({ tables, onSelect }) {
 
   return (
     <section className="alert-panel">
-      <div className="alert-title">△ 出菜警示 · 上限 25 分鐘</div>
+      <div className="alert-title">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3z" /><path d="M12 9v5" /><path d="M12 17h.01" /></svg>
+        出菜警示 · 上限 25 分鐘
+      </div>
       {overdueTables.map((table) => (
         <button key={table.id} type="button" onClick={() => onSelect(table.id)}>
           <strong>{table.id}</strong>
@@ -419,7 +440,7 @@ function TableCard({ table, selected, onClick }) {
       <Pill tone={meta.tone}>{meta.label}</Pill>
       {table.status !== 'available' && (
         <div className="table-card-detail">
-          {table.overdue ? <em>△ +{String(table.overdue).padStart(2, '0')}:00</em> : <span>{table.elapsed}:00</span>}
+          {table.overdue ? <em>逾時 +{String(table.overdue).padStart(2, '0')}:00</em> : <span>{table.elapsed}:00</span>}
           {total > 0 && <strong>{fmtMoney(total)}</strong>}
         </div>
       )}
@@ -430,6 +451,9 @@ function TableCard({ table, selected, onClick }) {
 function OperationPanel(props) {
   const { table, lines, workflow, setWorkflow, subtotal, serviceFee, total } = props;
   const meta = statusMeta[table.status];
+  const nextAction = getNextAction(table, lines);
+  const sentCount = lines.filter((line) => line.sent).length;
+  const servedCount = lines.filter((line) => line.served).length;
 
   function startResize(event) {
     event.preventDefault();
@@ -460,10 +484,19 @@ function OperationPanel(props) {
         </div>
         <Pill tone={meta.tone}>{meta.label}</Pill>
       </div>
+      <div className={`next-action ${nextAction.tone}`}>
+        <span>下一步建議</span>
+        <strong>{nextAction.label}</strong>
+      </div>
+      <div className="table-snapshot" aria-label="桌況摘要">
+        <span>{lines.length} 品項</span>
+        <span>{sentCount} 已送廚</span>
+        <span>{servedCount} 已上餐</span>
+      </div>
       <div className="guest-row">
         <span>{zoneName(table.zone)} · {table.seats} 席 · {table.party || props.partyDraft} 位</span>
         <Stepper value={props.partyDraft} min={1} max={table.seats} onChange={props.setPartyDraft} />
-        <button className="primary-button" type="button" onClick={props.onStart}>開桌</button>
+        <button className="primary-button" type="button" disabled={table.status !== 'available' && table.status !== 'seated'} onClick={props.onStart}>開桌</button>
       </div>
       <SegmentControl
         value={workflow}
@@ -477,7 +510,7 @@ function OperationPanel(props) {
       {workflow === 'order' && <OrderPane {...props} />}
       {workflow === 'kitchen' && <KitchenPane lines={lines} onServe={props.onServe} onServeAll={props.onServeAll} />}
       {workflow === 'checkout' && <CheckoutPane {...props} />}
-      <Ticket lines={lines} subtotal={subtotal} serviceFee={serviceFee} total={total} onQty={props.onQty} onRemove={props.onRemove} onSend={props.onSend} setWorkflow={setWorkflow} />
+      <Ticket lines={lines} workflow={workflow} subtotal={subtotal} serviceFee={serviceFee} total={total} onQty={props.onQty} onRemove={props.onRemove} onSend={props.onSend} setWorkflow={setWorkflow} />
     </aside>
   );
 }
@@ -532,9 +565,9 @@ function CheckoutPane({ subtotal, serviceFee, discount, setDiscount, total, paym
       <SummaryRow label="服務費 10%" value={fmtMoney(serviceFee)} />
       <label className="discount-field"><span>折扣</span><input value={discount} inputMode="numeric" onChange={(event) => setDiscount(Number(event.target.value || 0))} /></label>
       <div className="total-row"><span>應收金額</span><strong>{fmtMoney(total)}</strong></div>
-      <p className="checkout-note">inline 範例流程：填寫基本資料後以信用卡付款，並等待 OTP 簡訊驗證。</p>
+      <p className="checkout-note">收款後列印明細，必要時拆分付款或開立載具。</p>
       <div className="payment-grid">
-        {['信用卡', '分帳', '收據列印', 'OTP 驗證'].map((label) => (
+        {['信用卡', '現金', 'LINE Pay', '分帳'].map((label) => (
           <button key={label} type="button" className={paymentMethod === label ? 'is-active' : ''} onClick={() => setPaymentMethod(label)}>{label}</button>
         ))}
       </div>
@@ -543,7 +576,10 @@ function CheckoutPane({ subtotal, serviceFee, discount, setDiscount, total, paym
   );
 }
 
-function Ticket({ lines, subtotal, serviceFee, total, onQty, onRemove, onSend, setWorkflow }) {
+function Ticket({ lines, workflow, subtotal, serviceFee, total, onQty, onRemove, onSend, setWorkflow }) {
+  const showActions = workflow !== 'checkout';
+  const showTotals = workflow !== 'checkout';
+
   return (
     <section className="ticket">
       <div className="ticket-title"><strong>目前桌單</strong><span>{lines.length} 項</span></div>
@@ -552,21 +588,26 @@ function Ticket({ lines, subtotal, serviceFee, total, onQty, onRemove, onSend, s
         {lines.map((line) => (
           <div key={line.id} className="ticket-line">
             <div><strong>{line.name}</strong><span>{line.doneness || '一般'} {line.note ? `· ${line.note}` : ''}</span></div>
+            <Pill tone={line.served ? 'success' : line.sent ? 'warning' : 'active'}>{lineStatusLabel(line)}</Pill>
             <Stepper value={line.qty} min={1} onChange={(qty) => onQty(line, qty)} />
             <strong>{fmtMoney(line.price * line.qty)}</strong>
-            <IconButton label="移除品項" onClick={() => onRemove(line.id)}>x</IconButton>
+            <IconButton label="移除品項" onClick={() => onRemove(line.id)}>×</IconButton>
           </div>
         ))}
       </div>
-      <div className="ticket-total">
-        <SummaryRow label="小計" value={fmtMoney(subtotal)} />
-        <SummaryRow label="服務費" value={fmtMoney(serviceFee)} />
-        <SummaryRow label="合計" value={fmtMoney(total)} strong />
-      </div>
-      <div className="ticket-actions">
-        <button className="secondary-button" type="button" disabled={!lines.length} onClick={onSend}>送單到廚房</button>
-        <button className="primary-button" type="button" disabled={!lines.length} onClick={() => setWorkflow('checkout')}>前往結帳</button>
-      </div>
+      {showTotals && (
+        <div className="ticket-total">
+          <SummaryRow label="小計" value={fmtMoney(subtotal)} />
+          <SummaryRow label="服務費" value={fmtMoney(serviceFee)} />
+          <SummaryRow label="合計" value={fmtMoney(total)} strong />
+        </div>
+      )}
+      {showActions && (
+        <div className="ticket-actions">
+          <button className="secondary-button" type="button" disabled={!lines.length} onClick={onSend}>送單到廚房</button>
+          <button className="primary-button" type="button" disabled={!lines.length} onClick={() => setWorkflow('checkout')}>前往結帳</button>
+        </div>
+      )}
     </section>
   );
 }
@@ -606,6 +647,24 @@ function createLine(item, options = {}) {
     sent: Boolean(options.sent),
     served: Boolean(options.served),
   };
+}
+
+function getNextAction(table, lines) {
+  const hasUnsent = lines.some((line) => !line.sent);
+  const hasCooking = lines.some((line) => line.sent && !line.served);
+  if (table.status === 'available') return { label: '確認人數後開桌', tone: 'neutral' };
+  if (hasUnsent || table.status === 'ordering') return { label: '確認備註並送單', tone: 'order' };
+  if (hasCooking || table.status === 'cooking') return { label: table.overdue ? '優先催單並回報客人' : '追蹤出餐進度', tone: table.overdue ? 'danger' : 'kitchen' };
+  if (table.status === 'served' || table.status === 'waitingVisit') return { label: '追蹤回訪或帶往結帳', tone: 'serve' };
+  if (table.status === 'checkout') return { label: '確認付款與發票', tone: 'checkout' };
+  if (table.status === 'cleaning') return { label: '完成清潔後釋出桌位', tone: 'neutral' };
+  return { label: '查看桌況並安排下一步', tone: 'neutral' };
+}
+
+function lineStatusLabel(line) {
+  if (line.served) return '已上餐';
+  if (line.sent) return '製作中';
+  return '未送廚';
 }
 
 function estimateTotal(id) {
