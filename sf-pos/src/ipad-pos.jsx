@@ -11,15 +11,7 @@ const NAV_ICONS = {
   checkout: ['M6 4h12v16H6z', 'M9 8h6', 'M9 12h6', 'M9 16h3'],
 };
 
-const DEVICE_PRESETS = {
-  ipadPro11: { label: 'iPad Pro 11"', width: 1194, height: 834, detail: 'Landscape · 11-inch logical viewport' },
-  ipadPro129: { label: 'iPad Pro 12.9"', width: 1366, height: 1024, detail: 'Landscape · 12.9-inch logical viewport' },
-  ipadMini: { label: 'iPad mini', width: 1133, height: 744, detail: 'Landscape · mini logical viewport' },
-  fit: { label: 'Fit to screen', width: 1194, height: 834, detail: 'Scaled preview for small Mac windows' },
-};
-
 function IPadPosApp() {
-  const [devicePresetKey, setDevicePresetKey] = React.useState('ipadPro11');
   const [panelWidth, setPanelWidth] = React.useState(340);
   const [isPanelOpen, setIsPanelOpen] = React.useState(true);
   const [tables, setTables] = React.useState(initialTables);
@@ -47,12 +39,7 @@ function IPadPosApp() {
   const serviceFee = Math.round(subtotal * 0.1);
   const total = Math.max(0, subtotal + serviceFee - discount);
   const stats = getStats(tables);
-  const devicePreset = DEVICE_PRESETS[devicePresetKey];
   const deviceStyle = {
-    '--ipad-width': `${devicePreset.width}px`,
-    '--ipad-height': `${devicePreset.height}px`,
-    '--ipad-ratio': `${devicePreset.width} / ${devicePreset.height}`,
-    '--ipad-scale-ratio': String(Number((devicePreset.width / devicePreset.height).toFixed(4))),
     '--operation-panel-width': `${panelWidth}px`,
   };
 
@@ -145,8 +132,8 @@ function IPadPosApp() {
   }
 
   return (
-    <div className={`device-shell ${devicePresetKey === 'fit' ? 'is-fit' : ''}`} style={deviceStyle}>
-      <DeviceToolbar selected={devicePresetKey} onSelect={setDevicePresetKey} preset={devicePreset} />
+    <div className="device-shell" style={deviceStyle}>
+      <ReviewHeader stats={stats} />
       <div className="ipad-frame">
         <div className="ipad-status">
           <span>9:24 週六</span>
@@ -196,20 +183,19 @@ function IPadPosApp() {
   );
 }
 
-function DeviceToolbar({ selected, onSelect, preset }) {
+function ReviewHeader({ stats }) {
   return (
-    <div className="device-toolbar">
+    <div className="review-header">
       <div>
-        <span className="eyebrow">Device Preview</span>
-        <strong>{preset.label}</strong>
-        <small>{preset.width} × {preset.height} · {preset.detail}</small>
+        <span className="review-label">客戶確認版</span>
+        <h1>二樓餐館 iPad POS</h1>
+        <p>現場服務端流程確認</p>
       </div>
-      <div className="device-options">
-        {Object.entries(DEVICE_PRESETS).map(([key, option]) => (
-          <button key={key} type="button" className={selected === key ? 'is-active' : ''} onClick={() => onSelect(key)}>
-            {option.label}
-          </button>
-        ))}
+      <p className="review-rationale">桌況、點餐、出餐與結帳集中在同一台 iPad，讓門市主管確認資訊密度與操作順序。</p>
+      <div className="review-stats" aria-label="原型狀態摘要">
+        <span><strong>{stats.active}</strong> 使用中</span>
+        <span><strong>{stats.cooking}</strong> 製作中</span>
+        <span><strong>{stats.overdue}</strong> 超時</span>
       </div>
     </div>
   );
@@ -306,6 +292,7 @@ function BoardContent({ activeView, tables, stats, selectedTableId, onSelect }) 
           <span className="eyebrow">{activeView === 'my-zone' ? 'Server · 分區工作台' : 'Manager · 值班總覽'}</span>
           <h1>{title}</h1>
           <p>{subtitle}</p>
+          <small>目前顯示 {tables.length} 桌 · 主廳與窗邊區</small>
         </div>
         <div className="kpi-grid">
           <Kpi label="入座率" value={`${stats.occupancy}%`} detail={`${stats.active}/${tables.length} 桌`} />
@@ -493,6 +480,10 @@ function OperationPanel(props) {
         <span>{sentCount} 已送廚</span>
         <span>{servedCount} 已上餐</span>
       </div>
+      <div className="context-note">
+        <strong>現場提示</strong>
+        <span>{getContextNote(table, lines)}</span>
+      </div>
       <div className="guest-row">
         <span>{zoneName(table.zone)} · {table.seats} 席 · {table.party || props.partyDraft} 位</span>
         <Stepper value={props.partyDraft} min={1} max={table.seats} onChange={props.setPartyDraft} />
@@ -659,6 +650,18 @@ function getNextAction(table, lines) {
   if (table.status === 'checkout') return { label: '確認付款與發票', tone: 'checkout' };
   if (table.status === 'cleaning') return { label: '完成清潔後釋出桌位', tone: 'neutral' };
   return { label: '查看桌況並安排下一步', tone: 'neutral' };
+}
+
+function getContextNote(table, lines) {
+  const hasDessertNote = lines.some((line) => line.note === '生日牌' || line.name.includes('蛋糕'));
+  if (table.status === 'available') return '空桌只保留開桌與人數設定，避免服務員誤送單或誤結帳。';
+  if (table.overdue) return '此桌已超過出餐警戒，建議先催單並回桌告知等待時間。';
+  if (table.status === 'served' || table.status === 'waitingVisit' || hasDessertNote) {
+    return '服務鈴與生日牌需求會同步到訪桌紀錄，主管可從左側直接切換追蹤。';
+  }
+  if (table.status === 'checkout') return '結帳前保留折扣、付款方式與發票提醒，方便和客戶確認收銀流程。';
+  if (lines.some((line) => !line.sent)) return '未送廚品項集中在桌單底部，送單前可再次確認套餐、備註與數量。';
+  return '右側面板固定呈現下一步、桌單與狀態，減少服務員來回切畫面。';
 }
 
 function lineStatusLabel(line) {

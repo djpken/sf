@@ -1,8 +1,18 @@
 # sf-pos
 
-餐廳 iPad POS 操作端 POC，情境設定為「藍牛牛排館」晚餐時段。此版本聚焦在前期提案展示需要的 UX、workflow 與功能行為：選桌、開桌、點餐、送廚房、追出餐、結帳與清桌。
+餐廳 iPad POS 操作端 POC，情境設定為「二樓餐館」晚餐時段。此版本聚焦在客戶確認設計需要的 UX、workflow 與功能行為：選桌、開桌、點餐、送廚房、追出餐、結帳與清桌。
 
 ## 開啟方式
+
+在 OD 檔案樹直接開：
+
+```text
+sf-pos/index.html
+```
+
+這個入口會嵌入 `dist/dev.html` 的 build 結果，適合客戶確認設計。
+
+後續要繼續開發 source 時：
 
 ```bash
 rtk npm run dev
@@ -11,20 +21,23 @@ rtk npm run dev
 瀏覽器開啟：
 
 ```text
-http://localhost:5173/
+http://localhost:5173/dev.html
 ```
 
 ## 設計目標
 
 - 第一視窗就是橫向 iPad POS，不做 landing page。
+- 外層只保留客戶確認版抬頭與狀態摘要，不放裝置尺寸切換或設計控制器。
 - 讓 user 看到服務人員拿 iPad 操作的主要工作流，而不是後台 Dashboard。
 - 把桌況、菜單、桌單與下一步動作放在同一個操作面。
+- 右側操作面板補充現場提示，方便客戶討論每個狀態下的營運判斷。
 - 用 mock state 支援完整互動：加入品項、調整數量、送單、標記上餐、結帳清桌。
 - 檔名與模組邊界改成後續移植更直覺的結構。
 
 ## 目前結構
 
-- `index.html`: 靜態 POC 入口，載入 React/Babel 與本地檔案。
+- `index.html`: OD 客戶確認入口，載入已 build 的靜態 assets。
+- `dev.html`: Vite 開發入口，載入 `src/main.jsx`。
 - `src/main.jsx`: React 掛載點。
 - `src/ipad-pos.jsx`: iPad POS 主流程與狀態。
 - `src/pos-ui.jsx`: 共用 UI primitives 與格式化 helper。

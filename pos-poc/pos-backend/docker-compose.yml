@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pos_postgres
+    environment:
+      POSTGRES_USER: pos
+      POSTGRES_PASSWORD: pos_password
+      POSTGRES_DB: pos_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos -d pos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: pos_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos_network
+
+  # API service (uncomment when ready)
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: pos_api
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - DATABASE_HOST=postgres
+  #     - DATABASE_PORT=5432
+  #     - DATABASE_USER=pos
+  #     - DATABASE_PASSWORD=pos_password
+  #     - DATABASE_NAME=pos_db
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - pos_network
+  #   volumes:
+  #     - ./logs:/app/logs
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  pos_network:
+    driver: bridge

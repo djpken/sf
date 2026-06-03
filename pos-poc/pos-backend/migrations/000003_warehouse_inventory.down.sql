@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS update_monthly_inventory_items_updated_at ON monthly_inventory_items;
+DROP TRIGGER IF EXISTS update_monthly_inventory_zones_updated_at ON monthly_inventory_zones;
+DROP TRIGGER IF EXISTS update_monthly_inventory_records_updated_at ON monthly_inventory_records;
+DROP TRIGGER IF EXISTS update_warehouse_tare_containers_updated_at ON warehouse_tare_containers;
+DROP TRIGGER IF EXISTS update_warehouse_zone_templates_updated_at ON warehouse_zone_templates;
+
+DROP TABLE IF EXISTS monthly_inventory_items;
+DROP TABLE IF EXISTS monthly_inventory_zones;
+DROP TABLE IF EXISTS monthly_inventory_records;
+DROP TABLE IF EXISTS warehouse_tare_containers;
+DROP TABLE IF EXISTS warehouse_zone_templates;

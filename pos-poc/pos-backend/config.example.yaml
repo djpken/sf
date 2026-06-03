@@ -1,0 +1,28 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+  readTimeout: "10s"
+  writeTimeout: "10s"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "pos"
+  password: "pos_password"
+  dbname: "pos_db"
+  sslmode: "disable"
+  timezone: "Asia/Taipei"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "your-secret-key-change-in-production"
+  expireHour: 24
+
+log:
+  level: "debug"
+  outputPath: "logs/app.log"

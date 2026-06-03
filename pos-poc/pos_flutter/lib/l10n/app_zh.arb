@@ -1,0 +1,252 @@
+{
+  "@@locale": "zh",
+
+  "appTitle": "POS 系統",
+  "@appTitle": { "description": "Application title" },
+
+  "cancel": "取消",
+  "@cancel": {},
+  "confirm": "確認",
+  "@confirm": {},
+  "save": "儲存",
+  "@save": {},
+  "delete": "刪除",
+  "@delete": {},
+  "retry": "重試",
+  "@retry": {},
+  "refresh": "重新整理",
+  "@refresh": {},
+  "loadFailed": "載入失敗",
+  "@loadFailed": {},
+  "noData": "暫無資料",
+  "@noData": {},
+
+  "loginTitle": "POS System",
+  "@loginTitle": {},
+  "emailLabel": "Email",
+  "@emailLabel": {},
+  "passwordLabel": "Password",
+  "@passwordLabel": {},
+  "loginButton": "Login",
+  "@loginButton": {},
+  "loginWithPin": "Login with PIN",
+  "@loginWithPin": {},
+  "emailRequired": "請輸入電子郵件",
+  "@emailRequired": {},
+  "emailInvalid": "請輸入有效的電子郵件",
+  "@emailInvalid": {},
+  "passwordRequired": "請輸入密碼",
+  "@passwordRequired": {},
+  "passwordMinLength": "密碼至少需要 6 個字元",
+  "@passwordMinLength": {},
+  "pinLoginTitle": "PIN Login",
+  "@pinLoginTitle": {},
+  "enterPin": "請輸入 PIN 碼",
+  "@enterPin": {},
+  "invalidPin": "PIN 碼錯誤",
+  "@invalidPin": {},
+
+  "navOrders": "訂單",
+  "@navOrders": {},
+  "navTables": "桌位",
+  "@navTables": {},
+  "navReports": "報表",
+  "@navReports": {},
+  "navMenu": "菜單",
+  "@navMenu": {},
+  "logout": "登出",
+  "@logout": {},
+
+  "cart": "購物車",
+  "@cart": {},
+  "cartEmpty": "購物車是空的\n點選菜品加入",
+  "@cartEmpty": {},
+  "subtotal": "小計",
+  "@subtotal": {},
+  "taxLabel": "稅 (5%)",
+  "@taxLabel": {},
+  "total": "總計",
+  "@total": {},
+  "clearCart": "清空",
+  "@clearCart": {},
+  "checkout": "結帳",
+  "@checkout": {},
+  "selectTable": "選擇桌位",
+  "@selectTable": {},
+  "tableNumber": "桌號 {number}",
+  "@tableNumber": {
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "selectTableFirst": "請先選擇桌位",
+  "@selectTableFirst": {},
+  "checkoutCompleted": "結帳完成！",
+  "@checkoutCompleted": {},
+  "orderError": "發生錯誤",
+  "@orderError": {},
+
+  "dineIn": "內用",
+  "@dineIn": {},
+  "takeout": "外帶",
+  "@takeout": {},
+  "delivery": "外送",
+  "@delivery": {},
+
+  "checkoutTitle": "結帳",
+  "@checkoutTitle": {},
+  "amountDue": "應付金額",
+  "@amountDue": {},
+  "paymentMethod": "付款方式",
+  "@paymentMethod": {},
+  "cash": "現金",
+  "@cash": {},
+  "creditCard": "信用卡",
+  "@creditCard": {},
+  "cashReceived": "收款金額",
+  "@cashReceived": {},
+  "change": "找零",
+  "@change": {},
+  "referenceNumber": "交易參考號（選填）",
+  "@referenceNumber": {},
+  "confirmCheckout": "確認結帳",
+  "@confirmCheckout": {},
+  "checkoutFailed": "結帳失敗：{error}",
+  "@checkoutFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "printReceipt": "列印收據",
+  "@printReceipt": {},
+
+  "ordersTitle": "訂單管理",
+  "@ordersTitle": {},
+  "orderDetailTitle": "訂單 #{number}",
+  "@orderDetailTitle": {
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "orderStatus": "訂單狀態",
+  "@orderStatus": {},
+  "orderType": "訂單類型",
+  "@orderType": {},
+  "tableLabel": "桌號：{name}",
+  "@tableLabel": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "startPreparing": "開始製作",
+  "@startPreparing": {},
+  "markReady": "標記完成",
+  "@markReady": {},
+  "orderItems": "訂單項目",
+  "@orderItems": {},
+  "paymentsLabel": "付款記錄",
+  "@paymentsLabel": {},
+  "cancelOrder": "取消訂單",
+  "@cancelOrder": {},
+  "confirmCancelTitle": "確認取消",
+  "@confirmCancelTitle": {},
+  "confirmCancelMessage": "確定要取消訂單 #{number} 嗎？",
+  "@confirmCancelMessage": {
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "yes": "是",
+  "@yes": {},
+  "no": "否",
+  "@no": {},
+  "updateFailed": "更新失敗：{error}",
+  "@updateFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "cancelFailed": "取消失敗：{error}",
+  "@cancelFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "noOrders": "目前沒有訂單",
+  "@noOrders": {},
+  "filterAll": "全部",
+  "@filterAll": {},
+  "filterPending": "待確認",
+  "@filterPending": {},
+  "filterPreparing": "製作中",
+  "@filterPreparing": {},
+  "filterReady": "完成",
+  "@filterReady": {},
+  "filterCompleted": "已結帳",
+  "@filterCompleted": {},
+  "filterCancelled": "已取消",
+  "@filterCancelled": {},
+  "statusPending": "待確認",
+  "@statusPending": {},
+  "statusPreparing": "製作中",
+  "@statusPreparing": {},
+  "statusReady": "完成",
+  "@statusReady": {},
+  "statusCompleted": "已結帳",
+  "@statusCompleted": {},
+  "statusCancelled": "已取消",
+  "@statusCancelled": {},
+
+  "tablesTitle": "桌位管理",
+  "@tablesTitle": {},
+  "tableAvailable": "空桌",
+  "@tableAvailable": {},
+  "tableOccupied": "使用中",
+  "@tableOccupied": {},
+  "tableReserved": "已預約",
+  "@tableReserved": {},
+  "tableCapacity": "座位容量：{count} 人",
+  "@tableCapacity": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "tableArea": "區域：{area}",
+  "@tableArea": {
+    "placeholders": {
+      "area": { "type": "String" }
+    }
+  },
+  "markAsAvailable": "標記為空桌",
+  "@markAsAvailable": {},
+  "noTables": "沒有桌位",
+  "@noTables": {},
+
+  "reportsTitle": "報表分析",
+  "@reportsTitle": {},
+  "todaySummary": "今日摘要",
+  "@todaySummary": {},
+  "todayRevenue": "今日營業額",
+  "@todayRevenue": {},
+  "orderCount": "訂單數量",
+  "@orderCount": {},
+  "avgOrder": "平均訂單",
+  "@avgOrder": {},
+  "productRanking": "商品銷售排行",
+  "@productRanking": {},
+  "salesQty": "銷量：{qty}",
+  "@salesQty": {
+    "placeholders": {
+      "qty": { "type": "int" }
+    }
+  },
+  "noDataAvailable": "暫無資料",
+  "@noDataAvailable": {},
+
+  "languageZh": "中文",
+  "@languageZh": {},
+  "languageEn": "English",
+  "@languageEn": {},
+  "language": "語言",
+  "@language": {}
+}

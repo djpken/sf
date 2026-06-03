@@ -34,26 +34,13 @@ async function main() {
     throw new Error(`Expected native iPad frame with outer scroll on 1280x800 viewport, got ${JSON.stringify(viewportFit)}.`);
   }
 
-  await page.locator('.device-options button').filter({ hasText: 'iPad Pro 12.9"' }).click();
-  const pro129 = await frameMetrics(page);
-  if (pro129.frameWidth !== 1366 || pro129.frameHeight !== 1024) {
-    throw new Error(`Expected iPad Pro 12.9 frame at 1366x1024, got ${JSON.stringify(pro129)}.`);
+  if (await page.locator('.device-options, .device-toolbar').count()) {
+    throw new Error('Expected customer-review prototype to hide device selector controls.');
   }
-
-  await page.locator('.device-options button').filter({ hasText: 'iPad mini' }).click();
-  const mini = await frameMetrics(page);
-  if (mini.frameWidth !== 1133 || mini.frameHeight !== 744) {
-    throw new Error(`Expected iPad mini frame at 1133x744, got ${JSON.stringify(mini)}.`);
-  }
-
-  await page.locator('.device-options button').filter({ hasText: 'Fit to screen' }).click();
-  await page.locator('.device-shell.is-fit').waitFor({ state: 'visible', timeout: 2000 });
-  const fit = await frameMetrics(page);
-  if (fit.frameWidth >= 1194 || fit.frameHeight >= 834 || fit.hasOuterScroll) {
-    throw new Error(`Expected fit mode to scale iPad into 1280x800 viewport without outer scroll, got ${JSON.stringify(fit)}.`);
-  }
-
-  await page.locator('.device-options button').filter({ hasText: 'iPad Pro 11"' }).click();
+  await mustBeVisible(page.getByText('客戶確認版'), 'customer review label');
+  await mustBeVisible(page.getByText('二樓餐館 iPad POS'), 'review title');
+  await mustBeVisible(page.getByText('現場服務端流程確認'), 'review subtitle');
+  await mustBeVisible(page.getByText('桌況、點餐、出餐與結帳集中在同一台 iPad，讓門市主管確認資訊密度與操作順序。'), 'review rationale');
 
   const title = await page.title();
   if (title !== '餐廳 iPad POS') {
@@ -68,9 +55,12 @@ async function main() {
   }
 
   await mustBeVisible(page.getByText('全餐廳狀況'), 'overview title');
+  await mustBeVisible(page.getByText('目前顯示 56 桌 · 主廳與窗邊區'), 'board scope note');
   await mustBeVisible(page.getByText('01 桌'), 'selected table operation panel');
   await mustBeVisible(page.getByText('下一步建議'), 'operation next action label');
   await mustBeVisible(page.getByText('追蹤回訪或帶往結帳'), 'served table next action');
+  await mustBeVisible(page.getByText('現場提示'), 'operation context note');
+  await mustBeVisible(page.getByText('服務鈴與生日牌需求會同步到訪桌紀錄，主管可從左側直接切換追蹤。'), 'served context note');
   const navIconAudit = await page.evaluate(() => ({
     iconCount: document.querySelectorAll('.nav-icon svg').length,
     textIconCount: Array.from(document.querySelectorAll('.nav-icon')).filter((node) => !node.querySelector('svg')).length,
@@ -144,20 +134,6 @@ async function main() {
   if (errors.length) {
     throw new Error(`Browser errors:\n${errors.join('\n')}`);
   }
-}
-
-async function frameMetrics(page) {
-  return page.evaluate(() => {
-    const frame = document.querySelector('.ipad-frame').getBoundingClientRect();
-    return {
-      frameWidth: Math.round(frame.width),
-      frameHeight: Math.round(frame.height),
-      hasOuterScroll: document.documentElement.scrollHeight > window.innerHeight ||
-        document.documentElement.scrollWidth > window.innerWidth ||
-        document.body.scrollHeight > window.innerHeight ||
-        document.body.scrollWidth > window.innerWidth,
-    };
-  });
 }
 
 main().catch(async (error) => {

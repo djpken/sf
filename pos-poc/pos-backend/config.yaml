@@ -1,0 +1,65 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+  readTimeout: "10s"
+  writeTimeout: "10s"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "pos"
+  password: "pos_password"
+  dbname: "pos_db"
+  sslmode: "disable"
+  timezone: "Asia/Taipei"
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "your-secret-key-change-in-production"
+  expireHour: 24
+
+log:
+  level: "debug"
+  outputPath: "logs/app.log"
+
+payment:
+  # Set mock_mode: false and fill in real credentials when ready for production
+  mock_mode: true
+  return_url: "http://localhost:8080/api/v1/orders/payments/callback"
+  line_pay:
+    channel_id: ""           # LINE Pay ChannelId from LINE Developer Console
+    channel_secret: ""       # LINE Pay ChannelSecretKey from LINE Developer Console
+    is_sandbox: true
+  tap_pay:
+    partner_key: ""          # TapPay partner_key from dashboard
+    merchant_id: ""          # TapPay merchant_id from dashboard
+    is_sandbox: true
+
+invoice:
+  # Set mock_mode: false and fill in ECPay credentials for production
+  mock_mode: true
+  provider: "mock"           # "mock" or "ecpay"
+  seller_tax_id: "12345678"  # Your company's tax ID (統一編號)
+  seller_name: "美食餐飲集團"  # Your company name
+  ecpay:
+    merchant_id: ""          # ECPay MerchantID from ECPay dashboard
+    hash_key: ""             # ECPay HashKey
+    hash_iv: ""              # ECPay HashIV
+    is_sandbox: true
+
+delivery:
+  # Set mock_mode: false and fill in real credentials for production
+  mock_mode: true
+  default_store_id: "22222222-2222-2222-2222-222222222221"  # Store to assign incoming delivery orders
+  # Foodpanda partner credentials (from Foodpanda partner portal)
+  foodpanda_key: ""          # Foodpanda API key
+  foodpanda_url: ""          # Provided by Foodpanda (e.g. https://partner-api.foodpanda.com)
+  # Uber Eats credentials (from Uber Eats Developer portal)
+  uber_eats_id: ""           # Uber Eats OAuth2 Client ID
+  uber_eats_secret: ""       # Uber Eats OAuth2 Client Secret
+  uber_eats_url: ""          # https://api.uber.com (prod) or https://sandbox-api.uber.com

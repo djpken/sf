@@ -1,0 +1,423 @@
+{
+  "sourceUrl": "https://www.ubereats.com/tw/store/%E8%B2%B3%E6%A8%93%E9%A4%90%E5%BB%B3second-floor-cafe-%E4%BB%81%E6%84%9B%E5%BA%97/3174yeTyTCGmF2qgFPLRIQ?srsltid=AfmBOoqyV_Mj_n6e_Rr9XhM5IET1k-nlvSZLAFvQCYddvQWptw1hfaSq",
+  "restaurantName": "貳樓餐廳Second Floor Cafe 仁愛店",
+  "scrapedAt": "2026-05-27T08:04:58.738Z",
+  "items": [
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "(微辣) 綜合生菜、雞肉、山苦瓜、辣奶油火烤玉米、小蕃茄、季節時蔬、青蔥、鹽水雞油醋(含酒)、辣椒粉",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNTk3NTIzMzNhOWEwY2RkOTZlYzU5OGM2NThjNmFhMGUvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "貳樓金牌鹽水雞沙拉",
+      "priceText": "$370",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/貳樓金牌鹽水雞沙拉.webp"
+    },
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "橙香丹麥、焦糖漿、舒肥雞、半熟太陽雙蛋(微辣)、生菜、藜麥小米、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNWEyNzQ4YmJhNmVhZGQzZTAyMWI0M2Q2NDcyZmJlNWEvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "橙香法式丹麥Sunny舒肥雞",
+      "priceText": "$480",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/橙香法式丹麥Sunny舒肥雞.webp"
+    },
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "曙光奶油醬、雞肉、蝦子、炙燒紅椒、季節時蔬、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZTJhYzdiMDY3YTZjNGFjMmY4MTFhZjNmMjRjNTdjMGYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "曙光汁鮮蝦雞肉麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/曙光汁鮮蝦雞肉麵.webp"
+    },
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "「重口味愛好者很是喜歡」(極辣) 茄汁、雞塊、朝天乾辣椒、九層塔、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMjhjOWU5ZjVmNjdkMDYwNzA2YjhjZjhmZTdmOTZjNzAvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "香爆椒麻唐揚雞麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/香爆椒麻唐揚雞麵.webp"
+    },
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "(微辣)鹹香白醬、炸杏鮑菇、培根、山苦瓜、洋蔥、紅椒片「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYTk1MjRkMmI0NmEwODI1ODEyYzkwMTE1ZWZhNGIzM2QvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "台式熱炒鹹蛋苦瓜麵",
+      "priceText": "$410",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/台式熱炒鹹蛋苦瓜麵.webp"
+    },
+    {
+      "category": "人氣精選 Popular Items",
+      "description": "(小辣)奶油白醬、帕達諾起司、黃起司、白起司、香腸、紅椒片、九層塔「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMWE3Y2EwZTI2MWMxMmY3YWZmNGIxOGI2OWM1MjMyY2EvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "起司local香腸奶白麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/起司local香腸奶白麵.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "薯條、香蒜橄欖油",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMDBmNTdjOTgwZDYwOWEyZmJjMGZiYjI3ODM4ZTMyZjkvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "舊金山蒜香薯條",
+      "priceText": "$230",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/舊金山蒜香薯條.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "燕麥炸魚、薯條、辣雞尾酒醬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvOTUzNDA0OTNjNjU1YTJhMmI0NmEyOGYyZWEzNzFiYTgvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "燕麥脆脆炸魚薯條",
+      "priceText": "$250",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/燕麥脆脆炸魚薯條.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "薯條、松露醬、起司絲",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYTBjNDU0YzljNzFhNDZkOTRkNTc2NjYyMjZlOTU4MmQvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "松露薯條",
+      "priceText": "$260",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/松露薯條.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "薯條、烏斯特肉醬(含牛肉及海鮮成份)、起司醬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZDUzNTE5NTdkZDM0MTBjYTE5YWZhMDRiZjZiOWEyNTAvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "普丁肉醬薯條",
+      "priceText": "$270",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/普丁肉醬薯條.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "魷魚、薯條、烤檸檬、辣雞尾酒醬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZTA3NGI3YTJiOGEwMzMyN2UyMzIwMGE5ZmQyYjlhNmUvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "酥炸鮮魷佐雞尾酒醬",
+      "priceText": "$320",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/酥炸鮮魷佐雞尾酒醬.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "墨西哥酥餅、雞肉、酪梨醬、起司、洋蔥、BBQ醬、Salsa醬(微辣)",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMGE1NDUxMGJjOThkYzUxNmMyYTE0ZDViZWNjZmIzMGMvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "墨西哥雞肉酥餅",
+      "priceText": "$320",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/墨西哥雞肉酥餅.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "墨西哥酥餅、香腸、酪梨醬、起司、洋蔥、BBQ醬、Salsa醬(微辣)",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMGE1NDUxMGJjOThkYzUxNmMyYTE0ZDViZWNjZmIzMGMvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "墨西哥Local香腸酥餅",
+      "priceText": "$320",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/墨西哥Local香腸酥餅.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "美式酸辣雞翅、辣海地醃菜、烤檸檬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYWEyNmVkMmEyOGMxZDhlYjczZDUyNmEzODc4YjNmMzEvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "水牛城辣雞翅",
+      "priceText": "$340",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/水牛城辣雞翅.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "綜合生菜、蒜味麵包、小蕃茄、黑橄欖、季節時蔬、起司絲、凱薩醬(含海鮮成份)、Salsa醬(微辣)",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZjQ3ZjNiYmQzY2UwMzBhMmU1ZjZjYWI0MGU5ZmEyODgvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "經典凱薩沙拉",
+      "priceText": "$340",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/經典凱薩沙拉.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "(含堅果過敏) 綜合生菜、酥炸雞塊、起司嫩蛋、小蕃茄、酪梨醬、黑橄欖、起司絲、酥脆鷹嘴豆、胡麻醬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvOTRmYTQ1NmI2NjQ2ODg1NDUwOWFiNTE5ZTM4NjNhMmMvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "焙煎胡麻雞沙拉",
+      "priceText": "$390",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/焙煎胡麻雞沙拉.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "綜合生菜、舒肥雞、蒜味麵包、小蕃茄、黑橄欖、季節時蔬、起司絲、凱薩醬(含海鮮成份)、Salsa醬(微辣)",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNDViZTQ5ZWZmNjRlNjRmYmIxZTg4MGFlODRhY2MwNTgvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "經典舒肥雞凱薩沙拉",
+      "priceText": "$400",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/經典舒肥雞凱薩沙拉.webp"
+    },
+    {
+      "category": "分享盤 Sharing Plate",
+      "description": "綜合生菜、燻鮭魚、溏心蛋、蒜味麵包、小蕃茄、黑橄欖、季節時蔬、起司絲、凱薩醬(含海鮮成份)、Salsa醬(微辣)",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNTNlYmU2MTg3NTJlNWM1ZWJjNTE2ZTUzMThiOWNkYjYvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "經典燻鮭魚凱薩沙拉",
+      "priceText": "$420",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/經典燻鮭魚凱薩沙拉.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": "橙香丹麥、焦糖漿、蕈菇洋芋、洋蔥、藜麥小米、水波蛋、起司醬、生菜、巴薩米克醋膏",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMGZiMTM5ZWIyZjc1N2Y0ZDI0MWY3ZGVlMmNiZDg3MTYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "橙香法式丹麥蕈菇水波洋芋",
+      "priceText": "$400",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/橙香法式丹麥蕈菇水波洋芋.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": "橙香丹麥、焦糖漿、海鮮洋芋、洋蔥、藜麥小米、奶油炒菇、水波蛋、起司醬、生菜、巴薩米克醋膏",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMGZiMTM5ZWIyZjc1N2Y0ZDI0MWY3ZGVlMmNiZDg3MTYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "橙香法式丹麥水波海鮮洋芋",
+      "priceText": "$480",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/橙香法式丹麥水波海鮮洋芋.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": null,
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYWFiYjU4MzlmZjE5NzYyNDRmZDAyODIzNDE2YTFmYTYvZDAzZTUyYjNjOGFmMTlkOGZhODIyMmUyM2VmZDljZmEuanBlZw==",
+      "name": "橙香法式丹麥舒肥牛排",
+      "priceText": null,
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/橙香法式丹麥舒肥牛排.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": null,
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYTE4YTcxMzYzNmI0NDQxMTFkODI3Y2YzZTRiNzE4MDYvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "蕈菇奶起司歐姆蕾",
+      "priceText": null,
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/蕈菇奶起司歐姆蕾.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": "歐姆蛋、玉米、蕃茄、火腿、香腸、奶油炒菇、雙色起司、辣Pico de gallo蒜麵包、辣海地醃菜、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZWZkYTQ2MzczOTU3YjkyMGU2NWI2MzlkMWMxNzQ4M2UvZDAzZTUyYjNjOGFmMTlkOGZhODIyMmUyM2VmZDljZmEuanBlZw==",
+      "name": "總匯奶起司歐姆蕾",
+      "priceText": "$400",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/總匯奶起司歐姆蕾.webp"
+    },
+    {
+      "category": "SF Brunch 貳樓早午餐",
+      "description": "(含堅果過敏) 歐姆蛋、烏斯特肉醬(含牛肉及海鮮成份)、雙色起司、辣Pico de gallo蒜麵包、辣海地醃菜、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvM2JiNTJiOWE5MTVlM2Q3YTRmNDAzZTMwMDk5NTZjNGUvZDAzZTUyYjNjOGFmMTlkOGZhODIyMmUyM2VmZDljZmEuanBlZw==",
+      "name": "烏斯特肉醬歐姆蕾",
+      "priceText": "$410",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/烏斯特肉醬歐姆蕾.webp"
+    },
+    {
+      "category": "主餐/手抓 Big Bite",
+      "description": "歐式麵包、經典火腿、黃起司、半熟太陽蛋(微辣)、辣海地醃菜、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYzUxMTk4YjkxNWI0ZTMwZDIwYTgyNjM3OGFiYWMwYWYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "厚烤奶油 Ham 三明治",
+      "priceText": "$370",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/厚烤奶油 Ham 三明治.webp"
+    },
+    {
+      "category": "主餐/手抓 Big Bite",
+      "description": "牛肉漢堡排為7分熟，食用時小心碎骨。牛肉餅、黃起司、炸墨西哥辣椒、BBQ醬、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZjlhZTNiYTMxODI0Mjg4OWVmZmEzYzI4YmUzNjVjNzYvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "老墨辣鞭炮漢堡",
+      "priceText": "$400",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/老墨辣鞭炮漢堡.webp"
+    },
+    {
+      "category": "主餐/手抓 Big Bite",
+      "description": "牛肉漢堡排為7分熟，食用時小心碎骨。牛肉餅、黃起司、培根、燕麥炸魚、巴薩米可醋、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvN2QxNzhkNzdmODVkOGE2OWJkNWRiMGI5YjAyOWJjM2IvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "實打實招牌漢堡",
+      "priceText": "$470",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/實打實招牌漢堡.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(可調整為蛋奶素)特製雙醋、半熟太陽蛋、綜合菇、生菜、藜麥小米「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNGFmMjU4YTFjZTFmMjE3YjFjYTA3YWMwNWVmMGYwNzYvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "巴薩米克蕈菇麵",
+      "priceText": "$410",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/巴薩米克蕈菇麵.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(含堅果過敏、海鮮) 奶油青醬、蝦子、季節時蔬、炸蒜片、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvOWZjODIzYzViN2FiMGRiNDhiODczYTg1NmQ4MzkyMWYvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "經典青醬鮮蝦麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/經典青醬鮮蝦麵.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(孕婦不宜) 「重口味愛好者很是喜歡」酒、蛤蠣、蒜頭、九層塔、炸蒜片「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYWEwZWYzOTRhZmJiZGU2MTZlZDE5N2Y1NzA5YzQ0OTUvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "酒香蒜味蛤蜊墨魚麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/酒香蒜味蛤蜊墨魚麵.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(蛋奶素)松露奶油白醬、綜合菇、巧克力、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZDE3YjZmODk3ODk3ZGJkNjgwNmFkMWY2NGI2YzM3ZTMvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "松露蕈菇奶油麵",
+      "priceText": "$430",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/松露蕈菇奶油麵.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(微辣/孕婦不宜/可調整為蛋奶素)鹹香白醬、薑黃飯、山苦瓜、炸杏鮑菇、洋蔥、紅蔥頭、半熟太陽蛋、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYjRjZWEzNTEyOWE1ZDhkNGYxMWExZTBkNmFkZDdiYjcvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "月見苦瓜奶油飯",
+      "priceText": "$420",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/月見苦瓜奶油飯.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(小辣/孕婦不宜)茄汁、奶油洋蔥、季節時蔬、黑橄欖、西芹、香菜、香腸、薑黃飯「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMDMxNTgzYjU3NTUyZDI4NDkxZjY2YjMyN2IwNGNjNmYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "血腥瑪麗辣味飯",
+      "priceText": "$420",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/血腥瑪麗辣味飯.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(小辣/孕婦不宜)「重口味愛好者很是喜歡」魷魚、蝦子、蛤蜊、香腸、起司絲、薑黃飯「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvOGVhODYzZmUyY2I2NDE5ZGM1ZGZhYzIwMTI0MjljYTkvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "西班牙辣炒海陸飯",
+      "priceText": "$440",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/西班牙辣炒海陸飯.webp"
+    },
+    {
+      "category": "主餐/飯麵 Main",
+      "description": "(孕婦不宜)曙光奶油醬、薑黃飯、藍帶豬排、培根、季節時蔬、起司絲「飯麵類皆附主廚濃湯 or 蕃茄蔬菜湯(五辛蛋奶素)，二擇ㄧ」",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvN2Q0ZGQ0NDZiYmU2ZTQ1MjUxMTMyNTM5MTE1YTBjN2UvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "焗厚切豬排奶油飯",
+      "priceText": "$460",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/焗厚切豬排奶油飯.webp"
+    },
+    {
+      "category": "主餐/大盤子 Big Plate",
+      "description": "溫烤半雞、辣奶油火烤玉米(孕婦不宜)、BBQ醬、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZjlkOTJjMDdlNmJhOTZkOTllNzdmMDY2ZDI0ODI3YTgvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "BBQ溫烤半鷄",
+      "priceText": "$760",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/BBQ溫烤半鷄.webp"
+    },
+    {
+      "category": "主餐/大盤子 Big Plate",
+      "description": "脆皮豬腳、辣奶油火烤玉米(孕婦不宜)、德式酸菜、黃芥末、薯條",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYjA5ODgyNDc3MWE2MGZhMDhiMzIzNmE4OTgwY2YzYzgvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "主廚脆皮豬腳",
+      "priceText": "$790",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/主廚脆皮豬腳.webp"
+    },
+    {
+      "category": "均衡盤 Light Plate",
+      "description": "舒肥雞、花椰菜米、奶油炒菇、水波蛋、辣辣奶油火烤玉米(孕婦不宜)、生菜、藜麥小米、起司絲",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMDg3NmRmNzRhOWJiYTM5ODMzNDRjYmZhYjU0OWViYjIvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "舒肥雞藜麥花椰飯",
+      "priceText": "$400",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/舒肥雞藜麥花椰飯.webp"
+    },
+    {
+      "category": "均衡盤 Light Plate",
+      "description": "舒肥牛排為固定熟度喔！舒肥牛肉、巴沙魚、奶油炒菇、起司嫩蛋、綜合生菜、紅葡萄酒醋、起司絲",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNzdjNzI1YzMwZDhkYzJmZTk1NTI4MzBlM2ViZGRhYWEvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "生酮總匯海陸拼盤",
+      "priceText": "$580",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/生酮總匯海陸拼盤.webp"
+    },
+    {
+      "category": "小大人餐 Kids Plate",
+      "description": "(孕婦不宜)曙光奶油醬、雞肉、起司嫩蛋、牛蕃茄、起司絲、薑黃飯",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNzAwMjE1N2U3ZmRkNjU2NjdhMDQzYTFkMjM4ZmQxMjYvYzY3ZmM2NWU5YjRlMTZhNTUzZWI3NTc0ZmJhMDkwZjEuanBlZw==",
+      "name": "吃光光起司蛋雞肉飯",
+      "priceText": "$270",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/吃光光起司蛋雞肉飯.webp"
+    },
+    {
+      "category": "甜點 sweet plate",
+      "description": "4吋貳樓招牌巧克力蛋糕與香濃起司餡",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZTBkMDRiOGI0N2YyZGIwZTg4MjI0YTE0OWMzMjU3NTQvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "強的",
+      "priceText": "$210",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/強的.webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": null,
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMWRkZGY4NGI2NTExMTEyY2Y3YTc4NDllZTI0MmE3Y2YvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "冰美式咖啡",
+      "priceText": "$120",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/冰美式咖啡.webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": null,
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvZjMxMDViNzY4MDc3NWI2YzdhMmQxOTI3YjlmMTI1YmMvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "熱美式咖啡",
+      "priceText": "$120",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/熱美式咖啡.webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": null,
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMDMwODZiMDk4ZThlZDBlOTlmNzBhNjRhNWVkZDA1YzcvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "冰經典拿鐵",
+      "priceText": "$150",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/冰經典拿鐵.webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": "綠檸檬、雪碧、咖啡",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvMGYwNTk3YzMxZjI5Yzc4ZmVmMDQ4ZGEzMDJmMDMwMzAvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "西西里咖啡",
+      "priceText": "$170",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/西西里咖啡.webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": "鹽味奶油、啤酒花、牛奶、咖啡",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNzY3NDYxZjJlNWY3NTc0NzE0YjlhZjE3YzFhN2I1MWEvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "奶油啤酒花拿鐵(無酒精)",
+      "priceText": "$180",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/奶油啤酒花拿鐵(無酒精).webp"
+    },
+    {
+      "category": "經典咖啡 Coffee",
+      "description": null,
+      "imageUrl": null,
+      "name": "熱經典拿鐵",
+      "priceText": "$150",
+      "imagePath": null
+    },
+    {
+      "category": "茶品 Tea",
+      "description": "蛋奶素者不可食用 !! 天堂鳥茶、水蜜桃凍(內含動物性膠質)、綠檸檬",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYmU5ZTY2NTYwYzVlZGZjOGY0ZDk4YWMwM2MxZmUyNWIvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "天堂鳥冰茶",
+      "priceText": "$150",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/天堂鳥冰茶.webp"
+    },
+    {
+      "category": "茶品 Tea",
+      "description": "天堂鳥茶、肉桂、迷迭香、季節水果",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNjkwZTM0OWU5ODE5ZGU2ZTRmNDE1OTVkNGViMTYxMTQvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "熱女巫Sangria(無酒精)",
+      "priceText": "$160",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/熱女巫Sangria(無酒精).webp"
+    },
+    {
+      "category": "茶品 Tea",
+      "description": "鹽味奶油、檸檬茶、水蜜桃果泥、接骨木",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNDk4MzYxZGEwYjZmM2UwYWQ1Njg2MDZjZjA5NjUzM2QvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "桃花朵朵開運茶",
+      "priceText": "$160",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/桃花朵朵開運茶.webp"
+    },
+    {
+      "category": "茶品 Tea",
+      "description": "洛神葵、橙皮、蘋果、玫瑰果、接骨木實、甜菊葉、草莓、黑莓、覆盆莓、藍莓",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvNzBmNDU1YWEwN2RkNjdlNzI1ZGRlMTY4YmM4MTA4ODQvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "熱木槿野莓果茶",
+      "priceText": "$160",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/熱木槿野莓果茶.webp"
+    },
+    {
+      "category": "蔬果飲品 Fresh",
+      "description": "芭樂、蘋果、甜菜根、明日葉",
+      "imageUrl": "https://cn-geo1.uber.com/image-proc/resize/eats/format=webp/width=550/height=440/quality=70/srcb64=aHR0cHM6Ly90Yi1zdGF0aWMudWJlci5jb20vcHJvZC9pbWFnZS1wcm9jL3Byb2Nlc3NlZF9pbWFnZXMvYzI2MWU5YTBlNDMzM2UyNjNlYzAzN2IwMDYxYTZiMGUvMGZiMzc2ZDFkYTU2YzA1NjQ0NDUwMDYyZDI1YzVjODQuanBlZw==",
+      "name": "粉紅芭樂蘋果汁",
+      "priceText": "$200",
+      "imagePath": "/Users/kunkun/Projects/sf/ubereats-second-floor-menu/images/粉紅芭樂蘋果汁.webp"
+    }
+  ]
+}
