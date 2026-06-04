@@ -1,7 +1,7 @@
-"""Gemini streaming + function calling wrapper (google-genai SDK)。
+"""Gemini provider —— streaming + function calling(google-genai SDK)。
 
-Key 從環境變數讀,絕不寫進程式碼。model 預設 Flash-Lite(客服量大最省),
-用 GEMINI_MODEL 環境變數即可切到 flash / pro。
+對外介面與 openai_provider 一致(中性 messages + tool_specs),由 llm.py 依
+LLM_PROVIDER 分派。Key 從環境變數讀,絕不寫進程式碼。
 """
 
 from __future__ import annotations
@@ -33,38 +33,50 @@ def get_client() -> genai.Client:
     return _client
 
 
+def _to_contents(messages: list[dict]) -> list[types.Content]:
+    out: list[types.Content] = []
+    for m in messages:
+        role = "user" if m["role"] == "user" else "model"
+        out.append(types.Content(role=role, parts=[types.Part.from_text(text=m["content"])]))
+    return out
+
+
+def _to_tools(tool_specs: list[dict] | None) -> list[types.Tool] | None:
+    if not tool_specs:
+        return None
+    decls = [
+        types.FunctionDeclaration(
+            name=spec["name"],
+            description=spec.get("description", ""),
+            parameters_json_schema=spec.get("parameters"),
+        )
+        for spec in tool_specs
+    ]
+    return [types.Tool(function_declarations=decls)]
+
+
 async def stream_chat(
     system_prompt: str,
-    contents: list[types.Content],
+    messages: list[dict],
     *,
-    tools: list[types.Tool] | None = None,
+    tool_specs: list[dict] | None = None,
     tool_registry: dict[str, Callable] | None = None,
     temperature: float = 0.5,
     max_tool_rounds: int = 3,
 ) -> AsyncIterator[tuple[str, object]]:
-    """串流對話,支援 function calling。
-
-    yield ('text', str)  : 模型輸出的文字片段(即時串流)
-    yield ('tool', dict) : 某個工具被呼叫,內容為 {name, args, result}
-
-    一般對話:模型只輸出 text → 直接串完結束。
-    訂位等需要寫入時:模型發 function_call → 執行對應 handler → 把結果送回 →
-    模型再串出確認文字。整個迴圈最多 max_tool_rounds 次,避免無限呼叫。
-    """
     client = get_client()
     registry = tool_registry or {}
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
         temperature=temperature,
-        tools=tools or None,
+        tools=_to_tools(tool_specs),
     )
-    working = list(contents)
+    working = _to_contents(messages)
 
     for _ in range(max_tool_rounds):
         fcall_parts: list[types.Part] = []
 
-        # 流量上限(429)通常在開串流的瞬間發生(還沒吐任何 token);
-        # 此時可安全退避重試。已經吐過字才失敗則不重試,直接往上拋。
+        # 流量上限(429)通常在開串流瞬間發生(還沒吐 token),可安全退避重試。
         attempt = 0
         while True:
             emitted = False
@@ -87,14 +99,13 @@ async def stream_chat(
             except Exception as exc:  # noqa: BLE001
                 if is_rate_limit(exc) and not emitted and attempt < 2:
                     attempt += 1
-                    await asyncio.sleep(2 * attempt)  # 2s, 4s 退避
+                    await asyncio.sleep(2 * attempt)
                     continue
                 raise
 
         if not fcall_parts:
             return
 
-        # 把模型的 function_call 內容接回對話,執行工具,再把結果送回模型
         working.append(types.Content(role="model", parts=fcall_parts))
         response_parts: list[types.Part] = []
         for part in fcall_parts:
@@ -107,10 +118,8 @@ async def stream_chat(
             else:
                 try:
                     result = handler(**args)
-                except Exception as exc:  # noqa: BLE001 — 讓模型自行向客人解釋失敗
+                except Exception as exc:  # noqa: BLE001
                     result = {"error": str(exc)}
             yield ("tool", {"name": name, "args": args, "result": result})
-            response_parts.append(
-                types.Part.from_function_response(name=name, response=result)
-            )
+            response_parts.append(types.Part.from_function_response(name=name, response=result))
         working.append(types.Content(role="tool", parts=response_parts))

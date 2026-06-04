@@ -9,8 +9,6 @@ from __future__ import annotations
 import random
 import string
 
-from google.genai import types
-
 
 def _mock_booking_id() -> str:
     suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -42,29 +40,26 @@ def submit_reservation(
     }
 
 
-# Gemini function declaration —— 讓模型在湊齊資訊且客人確認送出後呼叫。
-RESERVATION_TOOL = types.Tool(
-    function_declarations=[
-        types.FunctionDeclaration(
-            name="submit_reservation",
-            description=(
-                "送出訂位到門市系統。只有在已確認『門市、時段、人數』且客人明確表示要送出"
-                "（例如說『送出』『確認訂位』）後才呼叫;資訊不齊或客人還在猶豫時不要呼叫。"
-            ),
-            parameters_json_schema={
-                "type": "object",
-                "properties": {
-                    "store": {"type": "string", "description": "門市名稱,例如 敦南店"},
-                    "time": {"type": "string", "description": "時段,24 小時制 HH:MM,15 分鐘刻度"},
-                    "party_size": {"type": "integer", "description": "用餐人數"},
-                    "date": {"type": "string", "description": "日期,例如 今晚 / 2026-06-10(可省略)"},
-                    "note": {"type": "string", "description": "備註,如慶生、忌口(可省略)"},
-                },
-                "required": ["store", "time", "party_size"],
-            },
-        )
-    ]
-)
+# Provider 無關的工具宣告(中性 JSON schema)。各 provider 自行轉成
+# Gemini 的 types.Tool 或 OpenAI 的 tools 格式。
+RESERVATION_TOOL_SPEC = {
+    "name": "submit_reservation",
+    "description": (
+        "送出訂位到門市系統。只有在已確認『門市、時段、人數』且客人明確表示要送出"
+        "（例如說『送出』『確認訂位』）後才呼叫;資訊不齊或客人還在猶豫時不要呼叫。"
+    ),
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "store": {"type": "string", "description": "門市名稱,例如 敦南店"},
+            "time": {"type": "string", "description": "時段,24 小時制 HH:MM,15 分鐘刻度"},
+            "party_size": {"type": "integer", "description": "用餐人數"},
+            "date": {"type": "string", "description": "日期,例如 今晚 / 2026-06-10(可省略)"},
+            "note": {"type": "string", "description": "備註,如慶生、忌口(可省略)"},
+        },
+        "required": ["store", "time", "party_size"],
+    },
+}
 
 # name -> callable 註冊表
 TOOLS = {"submit_reservation": submit_reservation}

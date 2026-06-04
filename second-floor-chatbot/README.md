@@ -12,9 +12,11 @@ web/                 前端 — Vite + React(沿用 prototype 手機殼 UI)
   src/App.jsx        聊天介面,fetch /api/chat 讀 SSE streaming
 server/              後端 — Python + FastAPI
   app/main.py        /api/chat(SSE)、conversations、profile 等端點
-  app/gemini.py      google-genai streaming + function calling wrapper
+  app/llm.py         provider 分派器(LLM_PROVIDER: gemini | openai)
+  app/gemini.py      Gemini provider(google-genai streaming + tools)
+  app/openai_provider.py  OpenAI 相容 provider(streaming + tools)
   app/menu.py        RAG:retrieve() 硬篩選 + build_system_prompt()
-  app/booking.py     訂位 function calling(目前 MOCK)
+  app/booking.py     訂位 function calling(中性工具宣告,目前 MOCK)
   app/db.py          SQLite:對話持久化 + 忌口記憶
   app/data/menu.json 菜單單一資料源(51 道,由 prototype MENU_INDEX dump)
   app/data/app.db    SQLite 檔(gitignored,自動建立)
@@ -32,7 +34,11 @@ server/              後端 — Python + FastAPI
 | `DELETE /api/profile` | 清除忌口記憶 |
 | `GET /api/health` | 健康檢查 + 目前 model |
 
-- **Model**:Gemini **2.5 Flash-Lite**(env `GEMINI_MODEL` 可切 flash / pro)
+- **Provider(可切換)**:`LLM_PROVIDER` 環境變數選 `gemini` 或 `openai`。
+  - `gemini` → google-genai,預設 model `gemini-2.5-flash-lite`
+  - `openai` → 任何 OpenAI 相容 endpoint(自架 vLLM / lab / Qwen…),
+    用 `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` 設定
+  - 兩個 provider 都支援 streaming + function calling(訂位),介面在 `app/llm.py` 統一分派
 - **RAG**:依使用者訊息偵測忌口/辣度 → `retrieve()` 把不合格菜色硬篩掉 →
   只把合格清單 + 行為守則注入 system prompt。正確性靠程式 + prompt,不靠大 model。
 - **菜色圖**:沿用 `../sf-menu`(vite `publicDir`)

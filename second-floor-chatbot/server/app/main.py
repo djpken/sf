@@ -23,20 +23,18 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import StreamingResponse  # noqa: E402
-from google.genai import types  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
-from . import db  # noqa: E402
-from .booking import RESERVATION_TOOL, TOOL_GUIDANCE, TOOLS  # noqa: E402
-from .gemini import MODEL, is_rate_limit, stream_chat  # noqa: E402
+from . import db, llm  # noqa: E402
+from .booking import RESERVATION_TOOL_SPEC, TOOL_GUIDANCE, TOOLS  # noqa: E402
 from .menu import build_system_prompt, infer_opts, retrieve  # noqa: E402
 
 
 def _friendly_error(exc: Exception) -> str:
-    if is_rate_limit(exc):
+    if llm.is_rate_limit(exc):
         return (
             "目前 AI 服務達到流量/額度上限(429)。若是短時間問太多次,請稍候約 1 分鐘再試;"
-            "若持續發生,代表每日免費額度可能用完,請到 Google AI Studio 檢查配額與帳單設定。"
+            "若持續發生,代表額度可能用完,請檢查目前 provider 的配額/帳單設定。"
         )
     return f"發生問題:{str(exc)[:200]}"
 
@@ -79,15 +77,7 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, "model": MODEL}
-
-
-def _to_contents(messages: list[Message]) -> list[types.Content]:
-    out: list[types.Content] = []
-    for m in messages:
-        role = "user" if m.role == "user" else "model"
-        out.append(types.Content(role=role, parts=[types.Part.from_text(text=m.content)]))
-    return out
+    return {"ok": True, "provider": llm.PROVIDER, "model": llm.MODEL}
 
 
 def _remembered_pref_hint(prefs: dict) -> str:
@@ -117,7 +107,7 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     retrieve_opts = {**detected, **profile}  # 記住的忌口 + 當下訊息(含辣度)
     items = retrieve(last_user, max_items=24, **retrieve_opts)
     system_prompt = build_system_prompt(items) + _remembered_pref_hint(profile) + TOOL_GUIDANCE
-    contents = _to_contents(req.messages)
+    chat_messages = [{"role": m.role, "content": m.content} for m in req.messages]
 
     # 對話持久化:建立/沿用對話,先存使用者訊息。
     conv_event: dict | None = None
@@ -136,10 +126,10 @@ async def chat(req: ChatRequest) -> StreamingResponse:
         try:
             if conv_event:
                 yield f"data: {json.dumps(conv_event, ensure_ascii=False)}\n\n"
-            async for kind, payload in stream_chat(
+            async for kind, payload in llm.stream_chat(
                 system_prompt,
-                contents,
-                tools=[RESERVATION_TOOL],
+                chat_messages,
+                tool_specs=[RESERVATION_TOOL_SPEC],
                 tool_registry=TOOLS,
             ):
                 if kind == "text":
