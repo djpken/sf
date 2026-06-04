@@ -10,10 +10,10 @@
     "qa": "node tests/qa.mjs"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "@vitejs/plugin-react": "^6.0.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "vite": "^8.0.14"
   },
   "devDependencies": {
     "playwright": "^1.60.0"
