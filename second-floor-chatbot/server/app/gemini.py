@@ -6,6 +6,7 @@ Key 從環境變數讀,絕不寫進程式碼。model 預設 Flash-Lite(客服量
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator, Callable
 
@@ -15,6 +16,11 @@ from google.genai import types
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
 _client: genai.Client | None = None
+
+
+def is_rate_limit(exc: Exception) -> bool:
+    s = str(exc)
+    return "429" in s or "RESOURCE_EXHAUSTED" in s or "quota" in s.lower()
 
 
 def get_client() -> genai.Client:
@@ -57,18 +63,33 @@ async def stream_chat(
     for _ in range(max_tool_rounds):
         fcall_parts: list[types.Part] = []
 
-        async for chunk in await client.aio.models.generate_content_stream(
-            model=MODEL,
-            contents=working,
-            config=config,
-        ):
-            cand = chunk.candidates[0] if getattr(chunk, "candidates", None) else None
-            parts = cand.content.parts if (cand and cand.content and cand.content.parts) else []
-            for part in parts:
-                if getattr(part, "function_call", None):
-                    fcall_parts.append(part)
-                elif getattr(part, "text", None):
-                    yield ("text", part.text)
+        # 流量上限(429)通常在開串流的瞬間發生(還沒吐任何 token);
+        # 此時可安全退避重試。已經吐過字才失敗則不重試,直接往上拋。
+        attempt = 0
+        while True:
+            emitted = False
+            fcall_parts = []
+            try:
+                async for chunk in await client.aio.models.generate_content_stream(
+                    model=MODEL,
+                    contents=working,
+                    config=config,
+                ):
+                    cand = chunk.candidates[0] if getattr(chunk, "candidates", None) else None
+                    parts = cand.content.parts if (cand and cand.content and cand.content.parts) else []
+                    for part in parts:
+                        if getattr(part, "function_call", None):
+                            fcall_parts.append(part)
+                        elif getattr(part, "text", None):
+                            emitted = True
+                            yield ("text", part.text)
+                break
+            except Exception as exc:  # noqa: BLE001
+                if is_rate_limit(exc) and not emitted and attempt < 2:
+                    attempt += 1
+                    await asyncio.sleep(2 * attempt)  # 2s, 4s 退避
+                    continue
+                raise
 
         if not fcall_parts:
             return

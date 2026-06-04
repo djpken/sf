@@ -28,8 +28,17 @@ from pydantic import BaseModel  # noqa: E402
 
 from . import db  # noqa: E402
 from .booking import RESERVATION_TOOL, TOOL_GUIDANCE, TOOLS  # noqa: E402
-from .gemini import MODEL, stream_chat  # noqa: E402
+from .gemini import MODEL, is_rate_limit, stream_chat  # noqa: E402
 from .menu import build_system_prompt, infer_opts, retrieve  # noqa: E402
+
+
+def _friendly_error(exc: Exception) -> str:
+    if is_rate_limit(exc):
+        return (
+            "目前 AI 服務達到流量/額度上限(429)。若是短時間問太多次,請稍候約 1 分鐘再試;"
+            "若持續發生,代表每日免費額度可能用完,請到 Google AI Studio 檢查配額與帳單設定。"
+        )
+    return f"發生問題:{str(exc)[:200]}"
 
 db.init()
 
@@ -146,7 +155,7 @@ async def chat(req: ChatRequest) -> StreamingResponse:
                 await asyncio.to_thread(db.touch_conversation, conversation_id)
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as exc:  # noqa: BLE001 — 把錯誤回給前端而非 500 斷線
-            yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'error': _friendly_error(exc)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         event_stream(),
