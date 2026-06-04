@@ -20,7 +20,8 @@ from fastapi.responses import StreamingResponse  # noqa: E402
 from google.genai import types  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
-from .gemini import MODEL, stream_reply  # noqa: E402
+from .booking import RESERVATION_TOOL, TOOL_GUIDANCE, TOOLS  # noqa: E402
+from .gemini import MODEL, stream_chat  # noqa: E402
 from .menu import build_system_prompt, infer_opts, retrieve  # noqa: E402
 
 
@@ -68,13 +69,22 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     # RAG:依最後一句使用者訊息偵測忌口/辣度,硬篩菜單後注入 system prompt。
     opts = infer_opts(last_user)
     items = retrieve(last_user, max_items=24, **opts)
-    system_prompt = build_system_prompt(items)
+    system_prompt = build_system_prompt(items) + TOOL_GUIDANCE
     contents = _to_contents(req.messages)
 
     async def event_stream():
         try:
-            async for piece in stream_reply(system_prompt, contents):
-                yield f"data: {json.dumps({'delta': piece}, ensure_ascii=False)}\n\n"
+            async for kind, payload in stream_chat(
+                system_prompt,
+                contents,
+                tools=[RESERVATION_TOOL],
+                tool_registry=TOOLS,
+            ):
+                if kind == "text":
+                    yield f"data: {json.dumps({'delta': payload}, ensure_ascii=False)}\n\n"
+                elif kind == "tool" and payload.get("name") == "submit_reservation":
+                    # 把訂位結果丟給前端渲染確認卡
+                    yield f"data: {json.dumps({'booking': payload['result']}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as exc:  # noqa: BLE001 — 把錯誤回給前端而非 500 斷線
             yield f"data: {json.dumps({'error': str(exc)}, ensure_ascii=False)}\n\n"

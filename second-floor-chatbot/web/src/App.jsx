@@ -73,6 +73,7 @@ function App() {
           if (!line) continue;
           const payload = JSON.parse(line.slice(5).trim());
           if (payload.delta) appendDelta(payload.delta);
+          else if (payload.booking) appendBooking(payload.booking);
           else if (payload.error) throw new Error(payload.error);
         }
       }
@@ -95,6 +96,16 @@ function App() {
       if (last?.role === 'model' && last.streaming) {
         next[next.length - 1] = { ...last, content: last.content + delta };
       }
+      return next;
+    });
+  }
+
+  function appendBooking(booking) {
+    setMessages((items) => {
+      const next = [...items];
+      // 插在結尾那則(串流中的 bot 泡泡)之前:[使用者] → [訂位卡] → [bot 確認]
+      const insertAt = next.length > 0 && next[next.length - 1].role === 'model' ? next.length - 1 : next.length;
+      next.splice(insertAt, 0, { role: 'booking', booking });
       return next;
     });
   }
@@ -171,6 +182,39 @@ function App() {
 
               {messages.map((m, index) => {
                 if (m.role === 'model' && m.streaming && !m.content) return null; // thinking 另外渲染
+                if (m.role === 'booking') {
+                  const b = m.booking;
+                  return (
+                    <article className="message is-bot is-recommendations" key={`booking-${index}`}>
+                      <div className="recommendation-bubble">
+                        <p>✅ 訂位已送出（測試）· 單號 {b.booking_id}</p>
+                        <div className="recommendation-list">
+                          <section className="recommendation-card is-store-preview">
+                            <div className="sp-header">
+                              <strong>{b.store}</strong>
+                            </div>
+                            <div className="sp-fields">
+                              <div className="sp-field">
+                                <span className="sp-field-label">時段</span>
+                                <span className="sp-field-value">{b.date} {b.time}</span>
+                              </div>
+                              <div className="sp-field">
+                                <span className="sp-field-label">人數</span>
+                                <span className="sp-field-value">{b.party_size} 位</span>
+                              </div>
+                            </div>
+                            {b.note && (
+                              <div className="sp-note">
+                                <span className="sp-field-label">備註</span>
+                                <span className="sp-field-value">{b.note}</span>
+                              </div>
+                            )}
+                          </section>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                }
                 return (
                   <article
                     className={['message', m.role === 'user' ? 'is-guest' : 'is-bot', m.streaming ? 'is-streaming' : '']

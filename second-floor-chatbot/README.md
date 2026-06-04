@@ -63,10 +63,18 @@ curl http://127.0.0.1:8000/api/health
 
 ## 目前範圍 / 下一步
 
-v1 已完成:真實 streaming 對話、菜單 RAG grounding、忌口硬篩選、前端沿用設計。
+v1 已完成:
+- 真實 Gemini streaming 對話、菜單 RAG grounding、忌口硬篩選、前端沿用設計
+- **訂位寫入(MOCK)**:Gemini function calling。客人確認後模型呼叫 `submit_reservation`,
+  後端回傳模擬單號,前端渲染訂位確認卡。**目前不寫任何真實後台**(待與廠商溝通)。
+
+### 接真實訂位系統時
+
+只需改 `server/app/booking.py` 的 `submit_reservation()` 內部:把 `return` 換成
+廠商訂位 API 寫入 + 取得真實單號 + 發送 Line/SMS 通知。對外介面(參數、回傳結構、
+function declaration、前端卡片)完全不動。
 
 尚未做(下一版):
-- **訂位寫入**:目前只整理訂位摘要,實際寫後台 + Line/SMS 通知需 function calling + 訂位系統 API
 - **意圖路由**:難題(多重忌口 + 模糊需求)再 routing 到 Gemini 2.5 Pro
 - **對話狀態持久化**:跨裝置會話、歷史紀錄
 - **個人化資料層**:會員、歷史偏好、忌口記憶
