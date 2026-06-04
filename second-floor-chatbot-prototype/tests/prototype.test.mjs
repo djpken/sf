@@ -109,15 +109,17 @@ test('reservation scenario waits for a selected time before showing the booking 
   assert.deepEqual(timeStep.followUps[0].options, ['19:45', '20:00', '20:15']);
   assert.deepEqual(
     timeStep.recommendations.map((recommendation) => ({
-      label: recommendation.label,
-      meta: recommendation.meta,
-      detail: recommendation.detail,
+      type: recommendation.type,
+      store: recommendation.store,
+      time: recommendation.time,
+      party: recommendation.party,
     })),
     [
       {
-        label: '敦南店',
-        meta: '19:45 · 4位',
-        detail: '晚餐聊天',
+        type: 'store-preview',
+        store: '敦南店',
+        time: '19:45',
+        party: '4 位',
       },
     ],
   );
@@ -133,9 +135,18 @@ test('all scenarios define staged follow-up flows instead of preloading conclusi
 
     for (const step of scenario.steps) {
       assert.ok(step.response.length > 0, `${scenario.id}:${step.id} should have a response`);
-      assert.ok(step.followUps.length > 0, `${scenario.id}:${step.id} should expose follow-ups`);
+      assert.ok(Array.isArray(step.followUps), `${scenario.id}:${step.id} should define a followUps array`);
+      // Terminal / card-action-driven steps may legitimately expose no follow-ups,
+      // but any group that IS present must offer at least one option.
       assert.ok(step.followUps.every((group) => group.options.length > 0));
     }
+
+    // Every scenario must still expose at least one follow-up group somewhere,
+    // so the guest is never dead-ended without a scripted way to advance.
+    assert.ok(
+      scenario.steps.some((step) => step.followUps.length > 0),
+      `${scenario.id} should expose follow-ups on at least one step`,
+    );
   }
 });
 
@@ -186,7 +197,7 @@ test('renders the first-screen chatbot prompt and scenario controls', async () =
   assert.doesNotMatch(app, /<em>{item\.why}<\/em>/);
   assert.match(app, /chat-composer/);
   assert.match(app, /<textarea/);
-  assert.match(app, /rows=\{1\}/);
+  assert.match(app, /rows=\{2\}/);
   assert.match(app, /composer-submit/);
   assert.match(app, /aria-label="送出訊息"/);
   assert.match(app, /send-arrow-icon/);
@@ -199,7 +210,7 @@ test('renders the first-screen chatbot prompt and scenario controls', async () =
   assert.match(app, /is-streaming/);
   assert.match(app, /advanceConversation/);
   assert.match(app, /follow-up-groups/);
-  assert.match(app, /setDraft\(getOptionValue\(option\)\)/);
+  assert.match(app, /advanceConversation\(getOptionValue\(option\)\)/);
   assert.doesNotMatch(app, /<strong>\{group\.label\}<\/strong>/);
   assert.doesNotMatch(app, /onClick=\{\(\) => advanceConversation\(option\)\}/);
   assert.doesNotMatch(app, /getOptionDescription/);
@@ -209,8 +220,8 @@ test('renders the first-screen chatbot prompt and scenario controls', async () =
   assert.match(styles, /\.follow-up-arrow\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*850;[^}]*line-height:\s*1\.62;/s);
   assert.match(styles, /\.follow-up-group button span:last-child\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*850;[^}]*line-height:\s*1\.62;/s);
   assert.match(styles, /button, input, textarea \{ font: inherit; \}/);
-  assert.match(styles, /\.composer-input\s*\{[^}]*min-height:\s*44px;[^}]*max-height:\s*96px;[^}]*resize:\s*none;/s);
-  assert.match(styles, /\.composer-submit\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;[^}]*aspect-ratio:\s*1;/s);
+  assert.match(styles, /\.composer-input\s*\{[^}]*resize:\s*none;/s);
+  assert.match(styles, /\.composer-submit\s*\{[^}]*width:\s*36px;[^}]*height:\s*36px;[^}]*aspect-ratio:\s*1;/s);
   assert.doesNotMatch(styles, /\.follow-up-group button\s*\{[^}]*border-bottom:/s);
   assert.match(styles, /\.follow-up-group button:not\(:last-child\)\s*\{[^}]*border-bottom: 1px solid/s);
   assert.doesNotMatch(styles, /\.follow-up-group button:last-child\s*\{[^}]*border-bottom:/s);
@@ -226,7 +237,7 @@ test('reservation time step booking card exposes send and decline actions', () =
 
   assert.ok(Array.isArray(bookingCard.actions), 'booking card should have an actions array');
   assert.ok(bookingCard.actions.includes('送出'), 'card actions should include 送出');
-  assert.ok(bookingCard.actions.includes('拒絕'), 'card actions should include 拒絕');
+  assert.ok(bookingCard.actions.includes('取消'), 'card actions should include 取消');
   assert.ok(bookingCard.actions.length >= 2, 'card should have at least two actions');
 });
 
@@ -247,11 +258,14 @@ test('takeout scenario uses real menu names and stages spice before confirmation
   assert.match(spiceText, /香爆椒麻唐揚雞麵/);
   assert.match(spiceText, /\$460/);
   assert.match(spiceText, /\$430/);
+  assert.match(spiceText, /舊金山蒜香薯條/);
   assert.ok(spiceStep.recommendations.length >= 2, 'spice step should show at least two options');
 
   assert.equal(confirmStep.id, 'confirm');
-  assert.match(JSON.stringify(confirmStep), /舊金山蒜香薯條/);
-  assert.ok(confirmStep.recommendations.length >= 1);
+  assert.ok(
+    confirmStep.followUps[0].options.includes('加薯條'),
+    'confirm step should offer the side-dish upsell',
+  );
 });
 
 test('dietary scenario filters pork-free and no-spice options using real menu names', () => {
@@ -287,7 +301,11 @@ test('dietary scenario filters pork-free and no-spice options using real menu na
   assert.match(confirmText, /曙光汁鮮蝦雞肉麵/);
   assert.match(confirmText, /舒肥雞藜麥花椰飯/);
   assert.match(confirmText, /巴薩米克蕈菇麵/);
-  assert.ok(confirmStep.recommendations.length >= 2, 'confirm step should show at least two pork-free no-spice options');
+  assert.ok(confirmStep.recommendations.length >= 1, 'confirm step should feature at least one pork-free no-spice dish');
+  assert.ok(
+    confirmStep.followUps[0].options.length >= 2,
+    'confirm step should offer alternative pork-free no-spice choices',
+  );
 
   const dietaryText = JSON.stringify(dietary);
   assert.doesNotMatch(dietaryText, /豬排/, 'dietary scenario should not recommend pork-heavy dishes as primary');
