@@ -761,6 +761,20 @@ h1, h2, p { margin: 0; }
   background: linear-gradient(158deg, #3c1908 0%, #1c0804 42%, #2e1108 80%, #190702 100%);
 }
 
+.dc-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dc-photo-monogram {
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  color: rgba(255, 244, 232, 0.34);
+}
+
 .recommendation-card.is-dish-card .dc-content {
   padding: 12px 14px;
   gap: 6px;

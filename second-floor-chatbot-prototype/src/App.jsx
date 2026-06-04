@@ -29,6 +29,27 @@ function getFirstFollowUpValue(step) {
   return getOptionValue(followUp.options[0]);
 }
 
+function DishPhoto({ label }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="dc-photo dc-photo-fallback" role="img" aria-label={label}>
+        <span className="dc-photo-monogram" aria-hidden="true">2F</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      className="dc-photo"
+      src={`/images/${label}.webp`}
+      alt={label}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function App() {
   const [showIntro, setShowIntro] = useState(true);
   const [showEndPage, setShowEndPage] = useState(false);
@@ -477,11 +498,7 @@ function App() {
                           if (recommendation.type === 'dish-card') {
                             return (
                               <section className="recommendation-card is-dish-card" key={recommendation.label}>
-                                <img
-                                  className="dc-photo"
-                                  src={`/images/${recommendation.label}.webp`}
-                                  alt={recommendation.label}
-                                />
+                                <DishPhoto label={recommendation.label} />
                                 <div className="dc-content">
                                   <div>
                                     <strong>{recommendation.label}</strong>
