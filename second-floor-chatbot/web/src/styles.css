@@ -1630,3 +1630,33 @@ h1, h2, p { margin: 0; }
   justify-items: center;
   align-content: center;
 }
+
+/* ─── 記住的忌口 chip bar ─── */
+.pref-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line, rgba(0,0,0,.08));
+  background: rgba(201, 75, 50, .05);
+}
+.pref-bar-label { font-size: 12px; font-weight: 700; opacity: .6; }
+.pref-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(201, 75, 50, .14);
+  color: #8c2f1d;
+}
+.pref-clear {
+  margin-left: auto;
+  font-size: 12px;
+  color: inherit;
+  opacity: .55;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}

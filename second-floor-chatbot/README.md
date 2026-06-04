@@ -11,11 +11,26 @@ Gemini 模型驅動,菜單以 RAG 注入 grounding。
 web/                 前端 — Vite + React(沿用 prototype 手機殼 UI)
   src/App.jsx        聊天介面,fetch /api/chat 讀 SSE streaming
 server/              後端 — Python + FastAPI
-  app/main.py        POST /api/chat(SSE)、GET /api/health
-  app/gemini.py      google-genai streaming wrapper
+  app/main.py        /api/chat(SSE)、conversations、profile 等端點
+  app/gemini.py      google-genai streaming + function calling wrapper
   app/menu.py        RAG:retrieve() 硬篩選 + build_system_prompt()
+  app/booking.py     訂位 function calling(目前 MOCK)
+  app/db.py          SQLite:對話持久化 + 忌口記憶
   app/data/menu.json 菜單單一資料源(51 道,由 prototype MENU_INDEX dump)
+  app/data/app.db    SQLite 檔(gitignored,自動建立)
 ```
+
+### API 端點
+
+| 端點 | 用途 |
+|------|------|
+| `POST /api/chat` | 對話 SSE streaming(套用記憶忌口、持久化) |
+| `GET /api/conversations` | 列出此 session 的對話 |
+| `GET /api/conversations/{id}` | 取某段對話訊息(重開續聊) |
+| `DELETE /api/conversations/{id}` | 刪除對話 |
+| `GET /api/profile` | 取記住的忌口 |
+| `DELETE /api/profile` | 清除忌口記憶 |
+| `GET /api/health` | 健康檢查 + 目前 model |
 
 - **Model**:Gemini **2.5 Flash-Lite**(env `GEMINI_MODEL` 可切 flash / pro)
 - **RAG**:依使用者訊息偵測忌口/辣度 → `retrieve()` 把不合格菜色硬篩掉 →
@@ -63,10 +78,14 @@ curl http://127.0.0.1:8000/api/health
 
 ## 目前範圍 / 下一步
 
-v1 已完成:
+已完成:
 - 真實 Gemini streaming 對話、菜單 RAG grounding、忌口硬篩選、前端沿用設計
 - **訂位寫入(MOCK)**:Gemini function calling。客人確認後模型呼叫 `submit_reservation`,
   後端回傳模擬單號,前端渲染訂位確認卡。**目前不寫任何真實後台**(待與廠商溝通)。
+- **對話持久化**:匿名裝置 session(localStorage,無登入)。對話存 SQLite,
+  側欄可看歷史、重開續聊、刪除。
+- **忌口記憶**:長期忌口(不吃豬/牛/海鮮/素/堅果)自動記住並套用到 RAG,
+  跨對話有效;前端 chip 顯示、可一鍵清除。辣度等看當下心情的不長期記。
 
 ### 接真實訂位系統時
 
@@ -83,5 +102,6 @@ function declaration、前端卡片)完全不動。
 （env `GEMINI_MODEL` 仍可手動切換,但預設與建議都是 flash-lite。）
 
 尚未做(下一版):
-- **對話狀態持久化**:跨裝置會話、歷史紀錄
-- **個人化資料層**:會員、歷史偏好、忌口記憶
+- **真實會員登入**:目前是匿名裝置 session,只能同裝置續聊。要跨裝置同步需做
+  註冊/登入(email 或 OAuth),把 session 綁到會員帳號。
+- **歷史訂單偏好**:訂位寫入接真系統後,才有真實歷史可做更深的個人化推薦。
