@@ -74,7 +74,14 @@ v1 已完成:
 廠商訂位 API 寫入 + 取得真實單號 + 發送 Line/SMS 通知。對外介面(參數、回傳結構、
 function declaration、前端卡片)完全不動。
 
+### Model 策略(已定案)
+
+**一律使用 Gemini 2.5 Flash-Lite,不做 Pro 路由。** 本系統的正確性靠 RAG 硬篩選
++ system prompt guardrail + function calling schema 保證,不靠 model 智商;Flash-Lite
+已驗證能處理菜單推薦、忌口篩選、多輪訂位、function calling。Pro 是預先優化,先不加。
+日後若有真實資料顯示某類失敗純屬「推理不夠」(非 RAG/prompt 可修),再針對該類評估。
+（env `GEMINI_MODEL` 仍可手動切換,但預設與建議都是 flash-lite。）
+
 尚未做(下一版):
-- **意圖路由**:難題(多重忌口 + 模糊需求)再 routing 到 Gemini 2.5 Pro
 - **對話狀態持久化**:跨裝置會話、歷史紀錄
 - **個人化資料層**:會員、歷史偏好、忌口記憶
