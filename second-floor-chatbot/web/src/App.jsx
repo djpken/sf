@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import logoUrl from './assets/logo-lg.png';
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
@@ -21,15 +22,11 @@ const STARTERS = [
   '我同事不吃豬肉，想幫大家找可以一起點的餐。',
 ];
 
-const GREETING =
-  '嗨,我是貳樓的 AI 助理。可以幫你看菜單、配餐點、找門市時段。今天想怎麼開始?';
-
 function App() {
   const sessionId = useRef(getSessionId()).current;
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [conversations, setConversations] = useState([]);
-  const [prefs, setPrefs] = useState([]); // 記住的忌口 labels
   const [draft, setDraft] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState('');
@@ -47,10 +44,9 @@ function App() {
   useEffect(() => scrollToEnd(), [messages]);
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // 開場載入對話列表 + 記住的忌口
+  // 開場載入對話列表
   useEffect(() => {
     refreshConversations();
-    refreshProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -60,14 +56,6 @@ function App() {
       const data = await res.json();
       setConversations(data.conversations ?? []);
     } catch { /* 列表非關鍵,失敗就略過 */ }
-  }
-
-  async function refreshProfile() {
-    try {
-      const res = await fetch(`${API_BASE}/api/profile?session_id=${encodeURIComponent(sessionId)}`);
-      const data = await res.json();
-      setPrefs(data.labels ?? []);
-    } catch { /* 略過 */ }
   }
 
   async function loadConversation(id) {
@@ -90,13 +78,6 @@ function App() {
       await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
       if (id === conversationId) newChat();
       refreshConversations();
-    } catch { /* 略過 */ }
-  }
-
-  async function clearPrefs() {
-    try {
-      await fetch(`${API_BASE}/api/profile?session_id=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
-      setPrefs([]);
     } catch { /* 略過 */ }
   }
 
@@ -155,7 +136,6 @@ function App() {
       }
       finishStreaming();
       refreshConversations();
-      refreshProfile();
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError(err.message || '連線發生問題');
@@ -206,168 +186,151 @@ function App() {
   const showThinking = isBusy && lastModel?.role === 'model' && lastModel.streaming && !lastModel.content;
 
   return (
-    <main className="app-shell is-left-collapsed is-chat-only">
-      <section className="phone-stage" aria-label="手機預覽">
-        <div className="phone-frame">
-          <div className="phone-dynamic-island" />
+    <main className={`app-shell${sidebarOpen ? ' is-sidebar-open' : ''}`}>
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setSidebarOpen(false)} />
+      )}
 
-          <section className="chat-panel phone-screen" aria-label="貳樓助理對話">
-            {sidebarOpen && (
-              <div className="phone-sidebar-backdrop" aria-hidden="true" onClick={() => setSidebarOpen(false)} />
-            )}
+      <aside className={`app-sidebar${sidebarOpen ? ' is-open' : ''}`} aria-label="對話列表">
+        <div className="psb-top">
+          <span className="psb-logo" aria-hidden="true"><img className="psb-logo-img" src={logoUrl} alt="" /></span>
+          <span className="psb-wordmark">貳樓助理</span>
+          <button aria-label="關閉側欄" className="psb-layout-toggle" type="button" onClick={() => setSidebarOpen(false)}>
+            <span className="psb-layout-icon" aria-hidden="true" />
+          </button>
+        </div>
 
-            <div className={`phone-sidebar${sidebarOpen ? ' is-open' : ''}`} aria-label="對話列表">
-              <div className="psb-top">
-                <span className="psb-logo" aria-label="Second Floor">2F</span>
-                <button aria-label="關閉側欄" className="psb-layout-toggle" type="button" onClick={() => setSidebarOpen(false)}>
-                  <span className="psb-layout-icon" aria-hidden="true" />
-                </button>
-              </div>
+        <div className="psb-new-row">
+          <button className="psb-new-btn" type="button" onClick={newChat}>
+            <span className="psb-plus" aria-hidden="true">+</span>
+            新對話
+          </button>
+        </div>
 
-              <div className="psb-new-row">
-                <button className="psb-new-btn" type="button" onClick={newChat}>
-                  <span className="psb-plus" aria-hidden="true">+</span>
-                  新對話
-                </button>
-              </div>
+        <div className="psb-conversations" aria-label="歷史對話">
+          {conversations.length === 0 && <p className="psb-empty">還沒有對話紀錄</p>}
+          {conversations.map((conv) => (
+            <button
+              key={conv.id}
+              className={`psb-conv-item${conv.id === conversationId ? ' is-active' : ''}`}
+              type="button"
+              onClick={() => loadConversation(conv.id)}
+            >
+              <span className="psb-conv-title">{conv.title || '未命名對話'}</span>
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label="刪除對話"
+                className="psb-conv-delete"
+                onClick={(e) => deleteConversation(conv.id, e)}
+              >
+                ✕
+              </span>
+            </button>
+          ))}
+        </div>
+      </aside>
 
-              <div className="psb-conversations" aria-label="歷史對話">
-                {conversations.length === 0 && <p style={{ padding: '8px 12px', opacity: 0.6, fontSize: 13 }}>還沒有對話紀錄</p>}
-                {conversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    className={`psb-conv-item${conv.id === conversationId ? ' is-active' : ''}`}
-                    type="button"
-                    onClick={() => loadConversation(conv.id)}
-                  >
-                    <span className="psb-conv-title">{conv.title || '未命名對話'}</span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label="刪除對話"
-                      onClick={(e) => deleteConversation(conv.id, e)}
-                      style={{ opacity: 0.5, padding: '0 4px', cursor: 'pointer' }}
-                    >
-                      ✕
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+      <section className="chat-panel" aria-label="貳樓助理對話">
+        <header className="chat-header">
+          <button aria-label="對話選單" className="frame-action frame-action-left" type="button" onClick={() => setSidebarOpen((v) => !v)}>
+            <span className="side-menu-icon" aria-hidden="true" />
+          </button>
+          <span className="eyebrow chat-title">Second Floor Assistant</span>
+          <div className="frame-actions-right" aria-label="對話操作">
+            <button aria-label="新增對話" className="frame-action" type="button" onClick={newChat}>
+              <span className="new-chat-icon" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
 
-            <header className="chat-header">
-              <button aria-label="對話選單" className="frame-action frame-action-left" type="button" onClick={() => setSidebarOpen((v) => !v)}>
-                <span className="side-menu-icon" aria-hidden="true" />
-              </button>
-              <span className="eyebrow chat-title">Second Floor Assistant</span>
-              <div className="frame-actions-right" aria-label="對話操作">
-                <button aria-label="新增對話" className="frame-action" type="button" onClick={newChat}>
-                  <span className="new-chat-icon" aria-hidden="true" />
-                </button>
-              </div>
-            </header>
-
-            {prefs.length > 0 && (
-              <div className="pref-bar" aria-label="記住的忌口">
-                <span className="pref-bar-label">記得你</span>
-                {prefs.map((p) => (
-                  <span className="pref-chip" key={p}>{p}</span>
-                ))}
-                <button type="button" className="pref-clear" onClick={clearPrefs}>清除</button>
-              </div>
-            )}
-
-            <div className="messages" ref={messagesRef}>
-              {!started && (
-                <>
-                  <article className="message is-bot">
-                    <p>{GREETING}</p>
-                  </article>
-                  <article className="message is-bot is-follow-ups">
-                    <div className="follow-up-groups">
-                      <section className="follow-up-group">
-                        <div>
-                          {STARTERS.map((s) => (
-                            <button key={s} type="button" onClick={() => send(s)}>
-                              <span className="follow-up-arrow" aria-hidden="true">↳</span>
-                              <span>{s}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </section>
-                    </div>
-                  </article>
-                </>
-              )}
-
-              {messages.map((m, index) => {
-                if (m.role === 'model' && m.streaming && !m.content) return null;
-                if (m.role === 'booking') {
-                  const b = m.booking;
-                  return (
-                    <article className="message is-bot is-recommendations" key={`booking-${index}`}>
-                      <div className="recommendation-bubble">
-                        <p>✅ 訂位已送出（測試）· 單號 {b.booking_id}</p>
-                        <div className="recommendation-list">
-                          <section className="recommendation-card is-store-preview">
-                            <div className="sp-header"><strong>{b.store}</strong></div>
-                            <div className="sp-fields">
-                              <div className="sp-field"><span className="sp-field-label">時段</span><span className="sp-field-value">{b.date} {b.time}</span></div>
-                              <div className="sp-field"><span className="sp-field-label">人數</span><span className="sp-field-value">{b.party_size} 位</span></div>
-                            </div>
-                            {b.note && (
-                              <div className="sp-note"><span className="sp-field-label">備註</span><span className="sp-field-value">{b.note}</span></div>
-                            )}
-                          </section>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                }
-                return (
-                  <article
-                    className={['message', m.role === 'user' ? 'is-guest' : 'is-bot', m.streaming ? 'is-streaming' : '']
-                      .filter(Boolean).join(' ')}
-                    key={`${m.role}-${index}`}
-                  >
-                    <p>{m.content}</p>
-                  </article>
-                );
-              })}
-
-              {showThinking && (
-                <article className="message is-bot is-thinking" aria-label="Assistant thinking">
-                  <p><span /><span /><span /></p>
-                </article>
-              )}
-
-              {error && (
-                <article className="message is-bot" role="alert">
-                  <p style={{ color: '#b3261e' }}>⚠️ {error}</p>
-                </article>
-              )}
-            </div>
-
-            <form className="chat-composer" onSubmit={onSubmit}>
-              <div className="composer-input-card">
-                <textarea
-                  aria-label="對話輸入"
-                  className="composer-input"
-                  rows={2}
-                  value={draft}
-                  placeholder="輸入訊息,或點上方建議開始…"
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={onKeyDown}
-                />
-                <div className="composer-toolbar">
-                  <button aria-label="送出訊息" className="composer-submit" type="submit" disabled={isBusy || !draft.trim()}>
-                    <span className="send-arrow-icon" aria-hidden="true">↑</span>
-                  </button>
+        <div className="messages" ref={messagesRef}>
+          <div className="messages-inner">
+            {!started && (
+              <div className="welcome">
+                <div className="welcome-mark" aria-hidden="true"><img className="welcome-mark-img" src={logoUrl} alt="" /></div>
+                <h1 className="welcome-title">嗨,我是貳樓 AI 助理</h1>
+                <p className="welcome-subtitle">
+                  幫你看菜單、配餐點、找適合的門市時段。從下面挑一個,或直接打字開始。
+                </p>
+                <div className="starter-grid">
+                  {STARTERS.map((s) => (
+                    <button key={s} type="button" className="starter-card" onClick={() => send(s)}>
+                      <span className="starter-arrow" aria-hidden="true">↳</span>
+                      <span>{s}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </form>
-          </section>
+            )}
+
+            {messages.map((m, index) => {
+              if (m.role === 'model' && m.streaming && !m.content) return null;
+              if (m.role === 'booking') {
+                const b = m.booking;
+                return (
+                  <article className="message is-bot is-recommendations" key={`booking-${index}`}>
+                    <div className="recommendation-bubble">
+                      <p>✅ 訂位已送出（測試）· 單號 {b.booking_id}</p>
+                      <div className="recommendation-list">
+                        <section className="recommendation-card is-store-preview">
+                          <div className="sp-header"><strong>{b.store}</strong></div>
+                          <div className="sp-fields">
+                            <div className="sp-field"><span className="sp-field-label">時段</span><span className="sp-field-value">{b.date} {b.time}</span></div>
+                            <div className="sp-field"><span className="sp-field-label">人數</span><span className="sp-field-value">{b.party_size} 位</span></div>
+                          </div>
+                          {b.note && (
+                            <div className="sp-note"><span className="sp-field-label">備註</span><span className="sp-field-value">{b.note}</span></div>
+                          )}
+                        </section>
+                      </div>
+                    </div>
+                  </article>
+                );
+              }
+              return (
+                <article
+                  className={['message', m.role === 'user' ? 'is-guest' : 'is-bot', m.streaming ? 'is-streaming' : '']
+                    .filter(Boolean).join(' ')}
+                  key={`${m.role}-${index}`}
+                >
+                  <p>{m.content}</p>
+                </article>
+              );
+            })}
+
+            {showThinking && (
+              <article className="message is-bot is-thinking" aria-label="Assistant thinking">
+                <p><span /><span /><span /></p>
+              </article>
+            )}
+
+            {error && (
+              <article className="message is-bot" role="alert">
+                <p className="message-error">⚠️ {error}</p>
+              </article>
+            )}
+          </div>
         </div>
+
+        <form className="chat-composer" onSubmit={onSubmit}>
+          <div className="composer-input-card">
+            <textarea
+              aria-label="對話輸入"
+              className="composer-input"
+              rows={2}
+              value={draft}
+              placeholder="輸入訊息,或點上方建議開始…"
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+            <div className="composer-toolbar">
+              <button aria-label="送出訊息" className="composer-submit" type="submit" disabled={isBusy || !draft.trim()}>
+                <span className="send-arrow-icon" aria-hidden="true">↑</span>
+              </button>
+            </div>
+          </div>
+        </form>
       </section>
     </main>
   );
