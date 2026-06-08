@@ -49,6 +49,7 @@
 
 * { box-sizing: border-box; }
 html, body, #root { width: 100%; min-height: 100%; margin: 0; }
+html { -webkit-text-size-adjust: 100%; }
 body {
   background: var(--screen);
   color: var(--ink);
@@ -57,7 +58,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 button, input, textarea { font: inherit; }
-button { border: 0; cursor: pointer; }
+button { border: 0; cursor: pointer; touch-action: manipulation; }
 h1, h2, p { margin: 0; }
 
 /* ═══════════════════════════════════════════════════════════
@@ -66,22 +67,48 @@ h1, h2, p { margin: 0; }
 .app-shell {
   height: 100dvh;
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   background: var(--ds-bg);
   overflow: hidden;
 }
 
+.app-shell.is-sidebar-collapsed .chat-header .frame-action-left {
+  display: grid;
+}
+
 /* ─── 側欄 ─── */
 .app-sidebar {
+  justify-self: start; /* 讓 width 屬性主導，不被 grid stretch 覆蓋 */
+  width: 272px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   background: var(--ds-card);
   border-right: 1px solid var(--ds-divider);
   overflow: hidden;
+  transition: width .3s cubic-bezier(.4, 0, .2, 1), opacity .15s ease .15s;
 }
 
-.sidebar-backdrop { display: none; }
+.app-shell.is-sidebar-collapsed .app-sidebar {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  border-right: none;
+  transition: opacity .1s ease, width .26s cubic-bezier(.4, 0, .2, 1);
+}
+
+.sidebar-backdrop {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .26s ease;
+}
+
+.sidebar-backdrop.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .psb-top {
   flex: none;
@@ -123,7 +150,7 @@ h1, h2, p { margin: 0; }
   border-radius: var(--ds-r-btn);
   background: transparent;
   color: var(--ds-ink3);
-  display: none;
+  display: grid;
   place-items: center;
   transition: background .15s ease, color .15s ease;
 }
@@ -200,8 +227,7 @@ h1, h2, p { margin: 0; }
   align-content: start;
 }
 
-.psb-conversations::before {
-  content: '歷史對話';
+.psb-section-label {
   padding: 8px 10px 6px;
   color: var(--ds-ink3);
   font-size: 11px;
@@ -343,6 +369,16 @@ h1, h2, p { margin: 0; }
 
 .frame-action:hover { background: var(--brand-soft); }
 
+.locale-toggle {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--ds-ink2);
+}
+.locale-toggle:hover { color: var(--ds-brand-dark); }
+
 .side-menu-icon,
 .new-chat-icon {
   position: relative;
@@ -404,6 +440,8 @@ h1, h2, p { margin: 0; }
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .messages-inner {
@@ -440,11 +478,33 @@ h1, h2, p { margin: 0; }
 
 .message.is-bot p.message-error { color: #b3261e; font-weight: 500; }
 
+/* 助理 markdown 內容排版 */
+.md-content { max-width: 100%; }
+.md-content > :first-child { margin-top: 0; }
+.md-content > :last-child { margin-bottom: 0; }
+.md-content p { margin: 0 0 10px; }
+.md-content strong { font-weight: 700; color: var(--ink); }
+.md-content em { font-style: italic; }
+.md-content ul,
+.md-content ol { margin: 6px 0 10px; padding-left: 1.4em; }
+.md-content li { font-size: 15px; line-height: 1.75; color: var(--ink); margin: 2px 0; }
+.md-content li::marker { color: var(--brand); }
+.md-content a { color: var(--brand); text-decoration: underline; }
+.md-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, .05);
+}
+.md-content h1,
+.md-content h2,
+.md-content h3 { font-size: 16px; font-weight: 700; margin: 12px 0 6px; }
+
 /* 訪客:右側暖色泡泡 */
 .message.is-guest { justify-content: flex-end; }
 
 .message.is-guest p {
-  max-width: 78%;
   padding: 11px 15px;
   border-radius: 16px 16px 4px 16px;
   background: var(--brand);
@@ -455,6 +515,7 @@ h1, h2, p { margin: 0; }
 
 /* ─── Streaming caret ─── */
 .message.is-streaming > p::after,
+.message.is-streaming .md-content > :last-child::after,
 .message.is-streaming .recommendation-bubble > p::after {
   content: '';
   display: inline-block;
@@ -475,12 +536,13 @@ h1, h2, p { margin: 0; }
 }
 
 .message.is-thinking span {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
-  background: var(--muted);
-  opacity: .34;
-  animation: thinking-dot 1s ease-in-out infinite;
+  background: var(--brand);
+  opacity: .5;
+  will-change: transform, opacity;
+  animation: thinking-dot .7s ease-out infinite;
 }
 
 .message.is-thinking span:nth-child(2) { animation-delay: .14s; }
@@ -620,6 +682,72 @@ h1, h2, p { margin: 0; }
   line-height: 1.55;
 }
 
+/* ─── 對話中的建議追問(垂直清單,Perplexity「相關問題」風,刻意非聊天泡泡) ─── */
+.followups {
+  margin-top: -12px;        /* 拉近與上方回覆(grid gap 22px → net ≈ 10px),讀起來像附屬該則回覆 */
+  animation: followup-in .2s ease both;
+}
+
+.followups-label {
+  margin: 0 0 2px;
+  padding: 0 2px;
+  color: var(--ds-ink3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.followups-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ds-divider);
+}
+
+.followup-item {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 8px;
+  background: transparent;
+  border-bottom: 1px solid var(--ds-divider);
+  color: var(--ds-ink2);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  transition: background .15s ease, color .15s ease;
+}
+
+.followup-item:hover {
+  background: var(--ds-bg-alt);
+  color: var(--ds-brand-dark);
+}
+
+.followup-item:hover .followup-icon { color: var(--ds-brand-dark); }
+
+.followup-item:disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.followup-icon {
+  flex: none;
+  color: var(--ds-brand);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.followup-text { flex: 1; min-width: 0; }
+
+@keyframes followup-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── 訂位確認卡(booking / store preview) ─── */
 .message.is-recommendations { justify-content: flex-start; }
 
@@ -694,6 +822,165 @@ h1, h2, p { margin: 0; }
   font-size: 14px;
   font-weight: 600;
 }
+
+/* ─── 門市資訊卡 ─── */
+.message.is-store-card-msg { justify-content: flex-start; }
+
+.store-card {
+  max-width: 340px;
+  padding: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ds-r-card);
+  background: var(--ds-card);
+  box-shadow: var(--ds-sh-raised);
+  overflow: hidden;
+}
+
+/* 店面照 banner:滿版貼齊卡片上緣，抵銷 card 的 16px padding */
+.sc-photo {
+  display: block;
+  width: calc(100% + 32px);
+  height: 150px;
+  margin: -16px -16px 14px;
+  object-fit: cover;
+  background: var(--ds-bg-alt);
+}
+
+.sc-photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--ds-bg-alt), var(--ds-card));
+  border-bottom: 1px solid var(--line);
+}
+
+.sc-photo-initial {
+  font-family: var(--ds-serif);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--ds-ink3);
+  opacity: .55;
+}
+
+.sc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.sc-pin { font-size: 16px; flex-shrink: 0; }
+
+.sc-name {
+  font-family: var(--ds-serif);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  line-height: 1.3;
+}
+
+.sc-body { display: grid; gap: 8px; }
+
+.sc-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.sc-label {
+  flex-shrink: 0;
+  width: 36px;
+  color: var(--ds-ink3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.sc-value {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.sc-phone {
+  color: var(--brand);
+  text-decoration: none;
+}
+.sc-phone:hover { text-decoration: underline; }
+
+.sc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sc-tag {
+  padding: 3px 10px;
+  border-radius: var(--ds-r-pill);
+  background: var(--ds-bg-alt);
+  color: var(--ds-ink2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+/* ─── 狀態徽章(可訂 / 客滿 / 已確認) ─── */
+.sc-status {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: var(--ds-r-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.sc-status.is-ok {
+  background: color-mix(in srgb, var(--ds-ok) 16%, transparent);
+  color: var(--ds-ok);
+}
+.sc-status.is-full {
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  color: var(--brand);
+}
+
+/* ─── 可改時段按鈕 ─── */
+.sc-alts,
+.sc-tags .sc-alt { display: inline-flex; }
+.sc-alts { flex-wrap: wrap; gap: 6px; }
+.sc-alts-label { width: auto; align-self: center; margin-right: 2px; }
+
+.sc-alt {
+  padding: 3px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ds-r-pill);
+  background: var(--ds-card);
+  color: var(--ds-ink);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--ds-mono);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.sc-alt:hover:not(:disabled) {
+  background: var(--ds-bg-alt);
+  border-color: var(--brand);
+}
+.sc-alt:disabled { opacity: .5; cursor: default; }
+
+/* ─── 訂位失敗卡 / 查無訂位 ─── */
+.recommendation-card.is-store-preview.is-failed {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--line-strong));
+  background: color-mix(in srgb, var(--brand) 4%, var(--ds-card));
+}
+.store-card.is-empty-lookup { background: var(--ds-bg-alt); }
+.sc-muted { color: var(--ds-ink3); font-size: 13px; line-height: 1.6; }
 
 /* ─── Composer ─── */
 .chat-composer {
@@ -770,10 +1057,90 @@ h1, h2, p { margin: 0; }
   line-height: 1;
 }
 
+/* ─── 訊息動作列 + 時間戳 ─── */
+.bot-msg-body {
+  width: 100%;
+}
+
+.bot-msg-actions {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.message.is-bot:hover .bot-msg-actions {
+  opacity: 1;
+}
+
+.copy-msg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--ds-card);
+  border: 1px solid var(--ds-divider);
+  color: var(--ds-ink3);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+
+.copy-msg-btn:hover {
+  background: var(--ds-bg-alt);
+  color: var(--ds-ink);
+}
+
+.copy-msg-btn.is-copied {
+  color: var(--ds-ok);
+}
+
+/* bot 時間:跟 copy icon 同行,由容器控制顯示 */
+.bot-msg-actions .msg-time {
+  font-size: 10px;
+  color: var(--ds-ink3);
+  line-height: 1;
+}
+
+/* user 訊息:泡泡下方,hover 從右滑入 */
+.user-msg-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 78%;
+}
+
+.user-msg-actions {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.message.is-guest:hover .user-msg-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.user-msg-actions .msg-time {
+  font-size: 10px;
+  color: var(--ds-ink3);
+  line-height: 1;
+}
+
 /* ─── Animations ─── */
 @keyframes thinking-dot {
-  0%, 80%, 100% { opacity: .34; transform: translateY(0); }
-  40% { opacity: 1; transform: translateY(-3px); }
+  0%     { opacity: .5;  transform: translateY(0); }
+  25%    { opacity: 1;   transform: translateY(-8px); }
+  50%    { opacity: .5;  transform: translateY(0); }
+  100%   { opacity: .5;  transform: translateY(0); }
 }
 
 @keyframes stream-caret {
@@ -785,8 +1152,21 @@ h1, h2, p { margin: 0; }
   *, *::before, *::after {
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
+    /* transition 不壓掉：sidebar 滑動/展開等 layout transition 保留，
+       讓 UI 有空間感，而非瞬間跳格。WCAG 要求減少「裝飾性動畫」，
+       不是消滅所有過渡。 */
   }
+  /* thinking dots：改成 opacity pulse，保留 loading 視覺回饋 */
+  .message.is-thinking span {
+    animation-name: thinking-dot-reduced !important;
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@keyframes thinking-dot-reduced {
+  0%, 100% { opacity: .4; }
+  50%       { opacity: 1;  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -819,6 +1199,7 @@ h1, h2, p { margin: 0; }
     z-index: 40;
     inset: 0;
     background: rgba(43, 31, 20, .4);
+    /* opacity 與 pointer-events 繼承自全域規則，transition 也一起生效 */
   }
 
   /* header:顯示漢堡、標題置中、對齊瀏海安全區 */
@@ -846,11 +1227,285 @@ h1, h2, p { margin: 0; }
     padding: 10px 14px max(12px, env(safe-area-inset-bottom));
   }
 
-  .message.is-guest p { max-width: 84%; }
+  /* 防止 iOS Safari 在 font-size < 16px 的輸入框聚焦時自動縮放頁面 */
+  .composer-input { font-size: 16px; }
+
+  .user-msg-body { max-width: 84%; }
 
   /* 手機:建議卡改單欄,避免擠壓 */
   .starter-grid,
   .follow-up-group div {
     grid-template-columns: 1fr;
   }
+
+  /* 手機:追問清單列高已 ≥44px(Design System 鐵則),字級略放大好讀好按 */
+  .followup-item { font-size: 14.5px; padding: 12px 8px; }
+
+  /* 手機:sidebar collapse 不作用,抽屜維持原本 transform 動畫 */
+  .app-shell.is-sidebar-collapsed .app-sidebar {
+    width: min(86%, 320px);
+    opacity: 1;
+    transform: translateX(-100%);
+    pointer-events: auto;
+    border-right: none;
+    transition: transform .26s cubic-bezier(.4, 0, .2, 1);
+  }
+  .app-shell.is-sidebar-collapsed .app-sidebar.is-open {
+    transform: translateX(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   /admin — Provider 管理介面
+   ═══════════════════════════════════════════════════════════ */
+.admin {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+.admin-muted { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+.admin-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.admin-header h1 { font-family: var(--ds-serif); font-size: 24px; font-weight: 700; color: var(--ink); }
+.admin-header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.admin-toolbar { margin: 20px 0; }
+
+/* 按鈕 */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--ds-r-btn);
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background .15s, border-color .15s;
+}
+.admin-btn:hover { background: var(--panel-warm); }
+.admin-btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.admin-btn-primary:hover { background: var(--brand-dark); }
+.admin-btn-danger { color: var(--brand-dark); border-color: var(--brand-soft); }
+.admin-btn-danger:hover { background: var(--brand-soft); }
+
+/* 列表 / 卡片 */
+.admin-list { display: flex; flex-direction: column; gap: 12px; }
+.admin-empty {
+  padding: 32px; text-align: center; color: var(--muted);
+  background: var(--paper); border: 1px dashed var(--line-strong); border-radius: var(--ds-r-card);
+}
+.admin-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--ds-r-card);
+  box-shadow: var(--ds-sh-flat);
+}
+.admin-card.is-active { border-color: var(--brand); box-shadow: var(--ds-sh-raised); }
+.admin-card-main { min-width: 0; }
+.admin-card-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.admin-card-title strong { font-size: 16px; color: var(--ink); }
+.admin-pill {
+  font-family: var(--ds-mono); font-size: 11px; font-weight: 500;
+  padding: 2px 8px; border-radius: var(--ds-r-pill);
+  background: var(--panel-warm); color: var(--cocoa); border: 1px solid var(--line);
+}
+.admin-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--ds-r-pill);
+  background: var(--brand); color: #fff;
+}
+.admin-meta { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; }
+.admin-meta > div { display: flex; gap: 6px; font-size: 13px; }
+.admin-meta dt { color: var(--ds-ink3); }
+.admin-meta dd { margin: 0; color: var(--muted); font-family: var(--ds-mono); word-break: break-all; }
+.admin-card-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; flex-shrink: 0; }
+
+.admin-test { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.admin-test.is-ok { color: var(--success); }
+.admin-test.is-fail { color: var(--brand-dark); }
+
+/* 訊息 */
+/* ─── 菜色圖片 chips ─── */
+.menu-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 0 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.menu-chips::-webkit-scrollbar { display: none; }
+.menu-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 72px;
+}
+.menu-chip-img {
+  width: 72px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: var(--ds-r-card);
+  background: var(--panel);
+}
+.menu-chip-name {
+  font-size: 10px;
+  color: var(--ds-ink2);
+  text-align: center;
+  line-height: 1.3;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── 聯絡門市 bottom sheet ─── */
+.contact-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 80;
+}
+.contact-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 81;
+  background: var(--panel);
+  border-radius: 16px 16px 0 0;
+  padding: 0 0 max(20px, env(safe-area-inset-bottom));
+  max-height: 70dvh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+.contact-sheet.is-open { transform: translateY(0); }
+.contact-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.contact-sheet-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.contact-sheet-close {
+  background: none;
+  color: var(--ds-ink2);
+  font-size: 16px;
+  padding: 4px 8px;
+}
+.contact-store-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 8px 0;
+}
+.contact-store-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  gap: 12px;
+}
+.contact-store-row + .contact-store-row { border-top: 1px solid var(--line); }
+.contact-store-name { font-size: 14px; color: var(--ink); flex: 1; }
+.contact-store-phone {
+  font-size: 14px;
+  color: var(--brand);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.contact-store-phone:hover { text-decoration: underline; }
+
+/* header 聯絡按鈕 */
+.frame-action.contact-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-error { color: var(--brand-dark); font-size: 14px; }
+.admin-banner {
+  background: var(--brand-soft); padding: 10px 14px; border-radius: var(--ds-r-btn); margin-bottom: 16px;
+}
+
+/* 登入 */
+.admin-login { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
+.admin-login-card {
+  width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px;
+  padding: 32px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--ds-r-card); box-shadow: var(--ds-sh-raised);
+}
+.admin-login-card h1 { font-family: var(--ds-serif); font-size: 22px; font-weight: 700; }
+
+/* 表單欄位 */
+.admin-field { display: flex; flex-direction: column; gap: 6px; }
+.admin-field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.admin input[type="text"],
+.admin input[type="password"],
+.admin select,
+.admin-login-card input,
+.admin-field input,
+.admin-field select {
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ds-r-btn);
+  background: var(--ds-card);
+  color: var(--ink);
+  font-size: 14px;
+  width: 100%;
+}
+.admin-field input:focus, .admin-field select:focus, .admin-login-card input:focus {
+  outline: none; border-color: var(--brand);
+}
+.admin-field input:disabled { background: var(--panel-warm); color: var(--ds-ink3); }
+
+.admin-url-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.admin-url-row > input { flex: 1; min-width: 200px; }
+.admin-checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.admin-checkbox input { width: auto; }
+
+/* Modal */
+.admin-modal-overlay {
+  position: fixed; inset: 0; background: rgba(43,31,20,.4);
+  display: grid; place-items: center; padding: 20px; z-index: 50;
+}
+.admin-modal {
+  width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 24px; background: var(--ds-bg); border-radius: var(--ds-r-card);
+  box-shadow: var(--ds-sh-raised);
+}
+.admin-modal h2 { font-family: var(--ds-serif); font-size: 19px; font-weight: 700; }
+.admin-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+@media (max-width: 600px) {
+  .admin-card { flex-direction: column; align-items: stretch; }
+  .admin-card-actions { justify-content: flex-start; }
 }

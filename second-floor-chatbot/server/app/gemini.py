@@ -7,15 +7,17 @@ LLM_PROVIDER 分派。Key 從環境變數讀,絕不寫進程式碼。
 from __future__ import annotations
 
 import asyncio
-import os
 from collections.abc import AsyncIterator, Callable
 
 from google import genai
 from google.genai import types
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+# Gemini 預設走 google-genai SDK 內建 endpoint;自訂 URL 走 http_options。
+DEFAULT_BASE_URL: str | None = None
+DEFAULT_MODEL = "gemini-2.5-flash-lite"
 
-_client: genai.Client | None = None
+# 依 (api_key, base_url) 快取 client,避免每次請求重建。
+_clients: dict[tuple[str, str], genai.Client] = {}
 
 
 def is_rate_limit(exc: Exception) -> bool:
@@ -23,14 +25,20 @@ def is_rate_limit(exc: Exception) -> bool:
     return "429" in s or "RESOURCE_EXHAUSTED" in s or "quota" in s.lower()
 
 
-def get_client() -> genai.Client:
-    global _client
-    if _client is None:
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY 未設定(請放在 server/.env)")
-        _client = genai.Client(api_key=api_key)
-    return _client
+def get_client(cfg: dict) -> genai.Client:
+    api_key = cfg.get("api_key")
+    if not api_key:
+        raise RuntimeError("此 Gemini provider 未設定 API key")
+    base_url = cfg.get("base_url") or ""
+    cache_key = (api_key, base_url)
+    client = _clients.get(cache_key)
+    if client is None:
+        kwargs: dict = {"api_key": api_key}
+        if base_url:
+            kwargs["http_options"] = types.HttpOptions(base_url=base_url)
+        client = genai.Client(**kwargs)
+        _clients[cache_key] = client
+    return client
 
 
 def _to_contents(messages: list[dict]) -> list[types.Content]:
@@ -56,6 +64,7 @@ def _to_tools(tool_specs: list[dict] | None) -> list[types.Tool] | None:
 
 
 async def stream_chat(
+    cfg: dict,
     system_prompt: str,
     messages: list[dict],
     *,
@@ -64,7 +73,8 @@ async def stream_chat(
     temperature: float = 0.5,
     max_tool_rounds: int = 3,
 ) -> AsyncIterator[tuple[str, object]]:
-    client = get_client()
+    client = get_client(cfg)
+    model = cfg.get("model") or DEFAULT_MODEL
     registry = tool_registry or {}
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
@@ -72,6 +82,7 @@ async def stream_chat(
         tools=_to_tools(tool_specs),
     )
     working = _to_contents(messages)
+    terminal = {s["name"] for s in (tool_specs or []) if s.get("terminal")}
 
     for _ in range(max_tool_rounds):
         fcall_parts: list[types.Part] = []
@@ -83,7 +94,7 @@ async def stream_chat(
             fcall_parts = []
             try:
                 async for chunk in await client.aio.models.generate_content_stream(
-                    model=MODEL,
+                    model=model,
                     contents=working,
                     config=config,
                 ):
@@ -106,8 +117,8 @@ async def stream_chat(
         if not fcall_parts:
             return
 
-        working.append(types.Content(role="model", parts=fcall_parts))
         response_parts: list[types.Part] = []
+        has_non_terminal = False
         for part in fcall_parts:
             fc = part.function_call
             name = fc.name
@@ -122,4 +133,13 @@ async def stream_chat(
                     result = {"error": str(exc)}
             yield ("tool", {"name": name, "args": args, "result": result})
             response_parts.append(types.Part.from_function_response(name=name, response=result))
+            if name not in terminal:
+                has_non_terminal = True
+
+        # terminal 工具(如 propose_followups)結果不必餵回模型,也不該為它多起一輪。
+        # 只有存在非 terminal 工具(如 submit_reservation)時,才接回對話、進下一輪
+        # 讓模型根據工具結果產出後續回覆。全部都是 terminal 就直接結束。
+        if not has_non_terminal:
+            return
+        working.append(types.Content(role="model", parts=fcall_parts))
         working.append(types.Content(role="tool", parts=response_parts))

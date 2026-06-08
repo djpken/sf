@@ -79,25 +79,45 @@ def retrieve(
 
 
 # 輕量中文忌口/辣度偵測 → 餵給 retrieve() 做硬篩選。
-# v1 用關鍵字;之後可換成模型 intent 分類或 tool use。
+# v1 用關鍵字(中英 union);之後可換成模型 intent 分類或 tool use。
+# lowercase 對中文無影響,可讓英文比對不區分大小寫。
 def infer_opts(text: str) -> dict:
-    t = text or ""
+    t = (text or "").lower()
     opts: dict = {}
-    if any(k in t for k in ("不吃豬", "不要豬", "沒有豬", "無豬", "去豬")):
+    if any(k in t for k in (
+        "不吃豬", "不要豬", "沒有豬", "無豬", "去豬",
+        "no pork", "pork-free", "pork free", "without pork", "avoid pork",
+    )):
         opts["no_pork"] = True
-    if any(k in t for k in ("不吃牛", "不要牛", "無牛")):
+    if any(k in t for k in (
+        "不吃牛", "不要牛", "無牛",
+        "no beef", "beef-free", "without beef", "avoid beef",
+    )):
         opts["no_beef"] = True
-    if any(k in t for k in ("不吃海鮮", "不要海鮮", "海鮮過敏")):
+    if any(k in t for k in (
+        "不吃海鮮", "不要海鮮", "海鮮過敏",
+        "no seafood", "seafood allergy", "shellfish allergy", "no fish", "no shrimp",
+    )):
         opts["no_seafood"] = True
-    if any(k in t for k in ("純素", "全素", "蛋奶素", "吃素", "素食")):
+    if any(k in t for k in (
+        "純素", "全素", "蛋奶素", "吃素", "素食",
+        "vegetarian", "vegan", "veggie",
+    )):
         opts["vegetarian"] = "lacto-ovo"
-    if any(k in t for k in ("不要辣", "完全去辣", "去辣", "不吃辣", "不辣")):
+    if any(k in t for k in (
+        "不要辣", "完全去辣", "去辣", "不吃辣", "不辣",
+        "not spicy", "no spice", "no spicy", "no chili", "mild",
+    )):
         opts["max_spice"] = 0
-    if any(k in t for k in ("不喝酒", "不要酒", "無酒精", "孕婦", "懷孕")):
+    if any(k in t for k in (
+        "不喝酒", "不要酒", "無酒精", "孕婦", "懷孕",
+        "no alcohol", "non-alcoholic", "alcohol-free", "pregnant", "pregnancy",
+    )):
         opts["no_alcohol"] = True
-    if any(k in t for k in ("孕婦", "懷孕")):
+    if any(k in t for k in ("孕婦", "懷孕", "pregnant", "pregnancy")):
         opts["pregnant_safe"] = True
-    if "堅果" in t and any(k in t for k in ("過敏", "不要", "不吃")):
+    if ("堅果" in t and any(k in t for k in ("過敏", "不要", "不吃"))) or \
+       any(k in t for k in ("nut allergy", "no nuts", "peanut allergy", "tree nut")):
         opts["no_nuts"] = True
     return opts
 
@@ -126,12 +146,23 @@ def _format_item(item: dict) -> str:
     )
 
 
-def build_system_prompt(items: list[dict] | None = None) -> str:
+_LANG_DIRECTIVE: dict[str, str] = {
+    "zh-TW": "說繁體中文。",
+    "en": (
+        "Respond in English. Keep dish names in their original Chinese "
+        "(a short English gloss in parentheses is welcome). "
+        "Translate descriptions and all your replies into English."
+    ),
+}
+
+
+def build_system_prompt(items: list[dict] | None = None, locale: str = "zh-TW") -> str:
     """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。"""
     menu_items = items if items is not None else MENU_INDEX
     menu_text = "\n\n".join(_format_item(i) for i in menu_items)
+    lang = _LANG_DIRECTIVE.get(locale, _LANG_DIRECTIVE["zh-TW"])
 
-    return f"""你是「貳樓 Second Floor Cafe」的 AI 助理,說繁體中文。你的角色是幫客人:
+    return f"""你是「貳樓 Second Floor Cafe」的 AI 助理。{lang} 你的角色是幫客人:
 
 1. **菜單導航** — 依口味、辣度、忌口（豬 / 牛 / 海鮮 / 素食 / 過敏原）推薦餐點
 2. **訂位協助** — 收集門市、人數、時段,整理成訂位摘要（實際寫入需接後台 API）

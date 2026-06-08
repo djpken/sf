@@ -7,10 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 工作分工(本專案約定)
 
-- **實作交給 codex**:寫程式、改檔案、跑指令的動手部分由 codex 執行。
-- **Claude Code 負責規劃與驗收**:拆解需求、設計方案、定義驗收標準,並在 codex 完成後
-  做 review 與驗證(跑 build / health check、檢視畫面、對照需求)。
-- 預設不要直接動手改 code;先產出計畫與驗收清單。除非使用者明確要求 Claude Code 親自實作。
+- **Claude Code 全程負責**:規劃、實作、驗收都由 Claude Code 執行 — 拆解需求、設計方案、
+  動手寫程式改檔案、跑指令,並自行驗證(跑 build / health check、檢視畫面、對照需求)。
+- 不再交給 codex 實作(2026-06 起改為 Claude Code 親自實作)。
 
 ## 常用指令
 
@@ -70,22 +69,54 @@ curl http://127.0.0.1:8000/api/health     # {"ok":true,"provider":"gemini","mode
 - **長期 vs 當下的區別很關鍵**:只有 `db.PROFILE_PREF_KEYS`(不吃豬/牛/海鮮/素/堅果)會寫進
   profile 並跨對話自動套用;辣度等「看當下心情」的偵測只用於本次 `retrieve()`,不長期記憶。
 
-### 訂位是 MOCK,介面為接真系統預留 seam
+### 訂位/查詢是 MOCK,介面為接真系統預留 seam
 
-`app/booking.py` 的 `submit_reservation()` 目前只回模擬單號。接真實門市/訂位系統時**只改函式內部**
-(換成廠商 API 寫入 + 取真實單號 + Line/SMS 通知),對外介面(參數、回傳結構、`RESERVATION_TOOL_SPEC`、
-前端訂位卡)維持不動。
+`app/booking.py` 有三個 mock 工具,**都不接真實門市/訂位系統**,接真系統時只改函式內部,
+對外介面(參數、回傳結構、各 `*_TOOL_SPEC`、前端卡片)維持不動:
+
+- `submit_reservation()` — 送出訂位。可能**客滿失敗**(`status:"failed"`,無單號、附 `alternatives` 建議時段)
+  或成功(`status:"confirmed"` + 模擬單號)。成功單暫存進**記憶體** `_RESERVATIONS`(非 sqlite,
+  避免違反「db 一律走 `to_thread`」的慣例;重啟即清空)。
+- `check_availability()` — 查某門市/時段有沒有位(只查不訂)。
+- `lookup_reservation()` — 用單號查 `_RESERVATIONS` 裡的既有訂位。
+
+**客滿判定是決定性偽隨機**:`_is_slot_full()` 用 `hash(門市|日期|時段|人數)`,所以同一組輸入永遠
+同一結果——「查到客滿就一定訂不到、重試也不跳動」,且 `check_availability` 與 `submit_reservation`
+共用它,保證「查到有位→送出就成功、查到客滿→送出就失敗」一致。熱門時段(18–20 點)與大桌(≥6)
+客滿機率較高。`submit_reservation`/`lookup_reservation` 為**非 terminal**(結果餵回模型,讓它在
+客滿/查無時接話引導);`show_store_card`/`propose_followups` 為 terminal(見下)。
 
 ### SSE 事件協定(main.py ↔ App.jsx 的跨檔契約)
 
-`/api/chat` 每筆 `data:` JSON 可能是:`{delta}` 文字增量、`{booking}` 訂位確認卡資料、
-`{conversation}` 新建對話 id、`{done:true}` 結束、`{error}` 友善錯誤訊息(429 額度等不丟 500,
-改用 `_friendly_error()` 包成可顯示文字)。前端據此分流渲染。
+`/api/chat` 每筆 `data:` JSON 可能是:
+- `{delta}` — 文字增量。
+- `{booking}` — 訂位卡資料,含 `status`:`"confirmed"`(成功,有 `booking_id`)或 `"failed"`
+  (客滿,有 `alternatives`)。前端據 `status` 渲染確認卡或失敗卡(`App.jsx` `role:'booking'`)。
+- `{availability}` — 空位查詢卡(`check_availability` 結果:`available` + 客滿時的 `alternatives`)。
+- `{reservation_lookup}` — 訂位查詢卡(`lookup_reservation` 結果:`found` + 明細或查無提示)。
+- `{store_card}` — 門市資訊卡(`show_store_card` 結果:地址/電話/時間/標籤/`image` 店面照)。
+- `{suggestions:{ask:[...],say:[...]}}` — 建議追問,分「你可能想問」(ask)/「你可能想說」(say)兩類
+  (每則回答尾端、`{done}` 之前;訂位回合以 booking 為準會丟棄)。
+- `{conversation}` — 新建對話 id。
+- `{done:true}` — 結束。
+- `{error}` — 友善錯誤訊息(429 額度等不丟 500,改用 `_friendly_error()` 包成可顯示文字)。
+
+前端 `App.jsx` 的 SSE 迴圈據此分流:`booking`/`store_card` 走專屬 append,`availability`/
+`reservation_lookup` 走通用 `appendCard(role, data)`,卡片一律插在串流中的助理訊息之前。
+
+### 建議追問(follow-ups)是 terminal 工具,不多打一次 LLM
+
+`booking.py` 的 `propose_followups`(`terminal=True`)由 system prompt 指示模型在每則回答尾端呼叫。
+provider(`gemini.py`/`openai_provider.py`)收到 terminal 工具的 function_call 後 yield 即結束,
+**不把結果餵回模型、也不為它多起一輪 generate** — 這是「同串流尾端產出、不加重 429 配額」的關鍵。
+新增其他「fire-and-forget」工具時比照標 `terminal=True`。前端 chips 不持久化(歷史對話不回填)。
 
 ## 環境與慣例
 
 - 後端 secrets 在 `server/.env`(gitignored):`GEMINI_API_KEY`、`GEMINI_MODEL`、`ALLOWED_ORIGINS`;
   openai provider 用 `OPENAI_BASE_URL`/`OPENAI_API_KEY`/`OPENAI_MODEL`。`app/data/app.db` 自動建立、gitignored。
-- 前端菜色圖透過 vite `publicDir: '../../sf-menu'` 取用(與 prototype 共用)。
+- 前端菜色圖透過 vite `publicDir: '../../sf-menu'` 取用(與 prototype 共用)。門市店面照放
+  `sf-menu/images/stores/<店名>.webp`,由 `app/data/stores.json` 的 `image` 欄位指定;
+  缺圖時前端 `StorePhoto` 自動退回帶店名首字的占位 banner(見該資料夾 README)。
 - **UI 一律遵循 `/Users/kunkun/Projects/sf/Design System.html` 的 token 系統**(色彩、字型、圓角、陰影);
   `web/src/styles.css` 頂部已把這些 token 鏡射為 CSS 變數,新樣式用變數、勿寫死色值。
