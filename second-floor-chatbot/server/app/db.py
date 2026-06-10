@@ -17,6 +17,7 @@ import uuid
 from pathlib import Path
 
 _DB_PATH = Path(os.environ.get("SF_DB_PATH") or (Path(__file__).parent / "data" / "app.db"))
+_MIGRATIONS_DIR = Path(__file__).parent.parent / "migrations"
 
 # 只有這些「長期忌口」才寫進 profile 並自動套用;辣度等看當下心情的不長期記。
 PROFILE_PREF_KEYS = ("no_pork", "no_beef", "no_seafood", "vegetarian", "no_nuts")
@@ -29,53 +30,59 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
-def init() -> None:
-    with _conn() as c:
-        c.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS conversations (
-              id          TEXT PRIMARY KEY,
-              session_id  TEXT NOT NULL,
-              title       TEXT,
-              created_at  REAL,
-              updated_at  REAL
-            );
-            CREATE TABLE IF NOT EXISTS messages (
-              id              INTEGER PRIMARY KEY AUTOINCREMENT,
-              conversation_id TEXT NOT NULL,
-              role            TEXT NOT NULL,
-              content         TEXT NOT NULL,
-              created_at      REAL
-            );
-            CREATE TABLE IF NOT EXISTS profiles (
-              session_id  TEXT PRIMARY KEY,
-              prefs       TEXT,
-              updated_at  REAL
-            );
-            CREATE TABLE IF NOT EXISTS providers (
-              id              TEXT PRIMARY KEY,
-              name            TEXT NOT NULL,
-              type            TEXT NOT NULL,          -- 'gemini' | 'openai' | 'azure'
-              api_key         TEXT,
-              model           TEXT,                   -- azure 時 = deployment 名稱
-              base_url        TEXT,                   -- 自訂 URL;空字串=用預設;azure=resource endpoint
-              use_custom_url  INTEGER DEFAULT 0,
-              api_version     TEXT,                   -- 僅 azure 用
-              created_at      REAL
-            );
-            CREATE TABLE IF NOT EXISTS app_settings (
-              key    TEXT PRIMARY KEY,
-              value  TEXT
-            );
-            CREATE INDEX IF NOT EXISTS idx_conv_session ON conversations(session_id);
-            CREATE INDEX IF NOT EXISTS idx_msg_conv ON messages(conversation_id);
-            """
+def _run_migrations() -> None:
+    """依序套用 migrations/*.sql,每個只跑一次,結果記在 _migrations 表。"""
+    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS _migrations"
+            " (name TEXT PRIMARY KEY, applied_at REAL)"
         )
-        # 既有 db 遷移:補上後加的欄位
-        cols = {r["name"] for r in c.execute("PRAGMA table_info(providers)").fetchall()}
-        if "api_version" not in cols:
-            c.execute("ALTER TABLE providers ADD COLUMN api_version TEXT")
-    seed_providers_from_env()
+        conn.commit()
+
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        applied = {r[0] for r in conn.execute("SELECT name FROM _migrations").fetchall()}
+
+        # Bootstrap:既有 DB 沒有 _migrations 表時,直接標記 0001_init 為已套用。
+        # 同時補上歷史上曾以 ad-hoc 方式新增的 api_version 欄位(如果還沒有)。
+        if "conversations" in tables and not applied:
+            conn.execute(
+                "INSERT OR IGNORE INTO _migrations (name, applied_at) VALUES (?, ?)",
+                ("0001_init", time.time()),
+            )
+            cols = {
+                r["name"]
+                for r in conn.execute("PRAGMA table_info(providers)").fetchall()
+            }
+            if "api_version" not in cols:
+                conn.execute("ALTER TABLE providers ADD COLUMN api_version TEXT")
+            conn.commit()
+            applied = {r[0] for r in conn.execute("SELECT name FROM _migrations").fetchall()}
+
+        for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+            name = path.stem
+            if name in applied:
+                continue
+            conn.executescript(path.read_text(encoding="utf-8"))
+            conn.execute(
+                "INSERT INTO _migrations (name, applied_at) VALUES (?, ?)",
+                (name, time.time()),
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def init() -> None:
+    _run_migrations()
 
 
 # ─── conversations ──────────────────────────────────────────────────────────
@@ -301,38 +308,92 @@ def delete_provider(provider_id: str) -> None:
         set_setting("active_provider_id", remaining[0]["id"] if remaining else "")
 
 
-def seed_providers_from_env() -> None:
-    """首次啟動且 providers 表為空時,依 .env 建立預設 provider,沿用既有設定。"""
-    if list_providers():
-        return
-    active_type = (os.environ.get("LLM_PROVIDER", "gemini") or "gemini").lower()
-    created: dict[str, str] = {}
+# ─── store_notes(分店特色資訊) ─────────────────────────────────────────────
 
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if gemini_key and gemini_key != "your-aistudio-api-key-here":
-        p = create_provider({
-            "name": "Gemini",
-            "type": "gemini",
-            "api_key": gemini_key,
-            "model": os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
-            "base_url": "",
-            "use_custom_url": False,
-        })
-        created["gemini"] = p["id"]
+def _row_to_store_notes(row: sqlite3.Row) -> dict:
+    return {
+        "seating_capacity": row["seating_capacity"],
+        "table_spacing": row["table_spacing"] or "",
+        "has_private_room": bool(row["has_private_room"]),
+        "has_outdoor": bool(row["has_outdoor"]),
+        "noise_level": row["noise_level"] or "",
+        "notes": row["notes"] or "",
+    }
 
-    openai_key = os.environ.get("OPENAI_API_KEY", "")
-    if openai_key and openai_key != "your-openai-compatible-key":
-        base_url = os.environ.get("OPENAI_BASE_URL", "")
-        p = create_provider({
-            "name": "OpenAI",
-            "type": "openai",
-            "api_key": openai_key,
-            "model": os.environ.get("OPENAI_MODEL", "openai/Qwen3.5-122B-A10B"),
-            "base_url": base_url,
-            "use_custom_url": bool(base_url),
-        })
-        created["openai"] = p["id"]
 
-    if created:
-        active_id = created.get(active_type) or next(iter(created.values()))
-        set_setting("active_provider_id", active_id)
+def list_store_notes() -> dict:
+    """回傳 {store_name: notes_dict}。"""
+    with _conn() as c:
+        rows = c.execute("SELECT * FROM store_notes").fetchall()
+    return {row["store_name"]: _row_to_store_notes(row) for row in rows}
+
+
+def upsert_store_notes(store_name: str, data: dict) -> dict:
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO store_notes"
+            " (store_name, seating_capacity, table_spacing, has_private_room,"
+            "  has_outdoor, noise_level, notes, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(store_name) DO UPDATE SET"
+            " seating_capacity=excluded.seating_capacity,"
+            " table_spacing=excluded.table_spacing,"
+            " has_private_room=excluded.has_private_room,"
+            " has_outdoor=excluded.has_outdoor,"
+            " noise_level=excluded.noise_level,"
+            " notes=excluded.notes,"
+            " updated_at=excluded.updated_at",
+            (
+                store_name,
+                data.get("seating_capacity") or None,
+                data.get("table_spacing") or "",
+                1 if data.get("has_private_room") else 0,
+                1 if data.get("has_outdoor") else 0,
+                data.get("noise_level") or "",
+                data.get("notes") or "",
+                time.time(),
+            ),
+        )
+    with _conn() as c:
+        row = c.execute(
+            "SELECT * FROM store_notes WHERE store_name = ?", (store_name,)
+        ).fetchone()
+    return _row_to_store_notes(row)
+
+
+# ─── menu_notes(菜單品項備注) ──────────────────────────────────────────────
+
+def list_menu_notes() -> dict:
+    """回傳 {item_name: notes_dict}。"""
+    with _conn() as c:
+        rows = c.execute("SELECT * FROM menu_notes").fetchall()
+    return {
+        row["item_name"]: {
+            "spice_adjustable": bool(row["spice_adjustable"]),
+            "notes": row["notes"] or "",
+        }
+        for row in rows
+    }
+
+
+def upsert_menu_note(item_name: str, data: dict) -> dict:
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO menu_notes (item_name, spice_adjustable, notes, updated_at)"
+            " VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(item_name) DO UPDATE SET"
+            " spice_adjustable=excluded.spice_adjustable,"
+            " notes=excluded.notes,"
+            " updated_at=excluded.updated_at",
+            (
+                item_name,
+                1 if data.get("spice_adjustable") else 0,
+                data.get("notes") or "",
+                time.time(),
+            ),
+        )
+    with _conn() as c:
+        row = c.execute(
+            "SELECT * FROM menu_notes WHERE item_name = ?", (item_name,)
+        ).fetchone()
+    return {"spice_adjustable": bool(row["spice_adjustable"]), "notes": row["notes"] or ""}

@@ -297,6 +297,28 @@ h1, h2, p { margin: 0; }
   color: var(--ds-brand-dark);
 }
 
+.psb-conv-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.psb-conv-delete-yes {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  background: rgba(184, 74, 46, .14);
+  color: var(--ds-brand-dark);
+  transition: background .12s ease;
+}
+
+.psb-conv-delete-yes:hover {
+  background: rgba(184, 74, 46, .28);
+}
+
 /* ═══════════════════════════════════════════════════════════
    聊天主面板
    ═══════════════════════════════════════════════════════════ */
@@ -1339,6 +1361,99 @@ h1, h2, p { margin: 0; }
 .admin-test.is-ok { color: var(--success); }
 .admin-test.is-fail { color: var(--brand-dark); }
 
+/* ─── Admin Tabs ─── */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin: 24px 0 0;
+}
+.admin-tab {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+  margin-bottom: -1px;
+}
+.admin-tab:hover { color: var(--ink); }
+.admin-tab.is-active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 600; }
+.admin-tab-content { padding-top: 24px; }
+
+/* badge variant */
+.admin-badge-set { background: var(--success); }
+
+/* select outside a modal */
+.admin-select {
+  padding: 7px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ds-r-btn);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 14px;
+}
+
+/* small button */
+.admin-btn-sm { padding: 6px 10px; font-size: 13px; }
+
+/* tag (for adjustable spice etc.) */
+.admin-tag {
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: var(--ds-r-pill);
+  background: var(--panel-warm); color: var(--cocoa); border: 1px solid var(--line);
+}
+
+/* ─── Menu list ─── */
+.admin-menu-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--ds-r-card);
+  overflow: hidden;
+}
+.admin-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  transition: background .1s;
+}
+.admin-menu-row:last-child { border-bottom: none; }
+.admin-menu-row:hover { background: var(--panel-warm); }
+.admin-menu-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-menu-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+/* textarea */
+.admin-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--ds-r-btn);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.admin-field textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
 /* 訊息 */
 /* ─── 菜色圖片 chips ─── */
 .menu-chips {
@@ -1451,6 +1566,11 @@ h1, h2, p { margin: 0; }
 }
 
 .admin-error { color: var(--brand-dark); font-size: 14px; }
+.admin-success { color: #2d7d46; font-size: 14px; }
+
+/* 聯絡方式 tab */
+.admin-contact-form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
+
 .admin-banner {
   background: var(--brand-soft); padding: 10px 14px; border-radius: var(--ds-r-btn); margin-bottom: 16px;
 }
@@ -1466,7 +1586,8 @@ h1, h2, p { margin: 0; }
 
 /* 表單欄位 */
 .admin-field { display: flex; flex-direction: column; gap: 6px; }
-.admin-field > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+.admin-field > span,
+.admin-field > label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .admin input[type="text"],
 .admin input[type="password"],
 .admin select,

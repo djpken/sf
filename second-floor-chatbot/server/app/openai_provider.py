@@ -1,7 +1,7 @@
 """OpenAI 相容 provider —— streaming + function calling(openai SDK)。
 
-可接任何 OpenAI 相容 endpoint(自架 vLLM、Qwen、本地 lab 等),用
-OPENAI_BASE_URL / OPENAI_API_KEY / OPENAI_MODEL 設定。對外介面與 gemini 一致。
+可接任何 OpenAI 相容 endpoint(自架 vLLM、Qwen、本地 lab 等)。
+api_key / base_url / model 透過 admin 後台設定,不從 env 讀取。對外介面與 gemini 一致。
 """
 
 from __future__ import annotations

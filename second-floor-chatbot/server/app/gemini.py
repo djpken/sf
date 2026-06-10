@@ -1,7 +1,7 @@
 """Gemini provider —— streaming + function calling(google-genai SDK)。
 
 對外介面與 openai_provider 一致(中性 messages + tool_specs),由 llm.py 依
-LLM_PROVIDER 分派。Key 從環境變數讀,絕不寫進程式碼。
+active provider 分派。api_key / base_url / model 透過 admin 後台設定。
 """
 
 from __future__ import annotations

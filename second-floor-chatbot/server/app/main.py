@@ -40,7 +40,7 @@ from .booking import (  # noqa: E402
     TOOLS,
     build_location_hint,
 )
-from .menu import build_system_prompt, infer_opts, retrieve  # noqa: E402
+from .menu import MENU_INDEX, build_system_prompt, infer_opts, retrieve  # noqa: E402
 
 _STORES_PATH = os.path.join(os.path.dirname(__file__), "data", "stores.json")
 with open(_STORES_PATH, encoding="utf-8") as _f:
@@ -105,6 +105,27 @@ class ProviderIn(BaseModel):
 
 class AuthIn(BaseModel):
     token: str = ""
+
+
+class StoreNotesIn(BaseModel):
+    seating_capacity: int | None = None
+    table_spacing: str = ""
+    has_private_room: bool = False
+    has_outdoor: bool = False
+    noise_level: str = ""
+    notes: str = ""
+
+
+class StoreCreateIn(BaseModel):
+    name: str
+    address: str = ""
+    phone: str = ""
+    hours: str = ""
+
+
+class MenuNoteIn(BaseModel):
+    spice_adjustable: bool = False
+    notes: str = ""
 
 
 app = FastAPI(title="Second Floor Chatbot API")
@@ -175,7 +196,17 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     )
     retrieve_opts = {**detected, **profile}  # 記住的忌口 + 當下訊息(含辣度)
     items = retrieve(last_user, max_items=24, **retrieve_opts)
-    system_prompt = build_system_prompt(items, locale=req.locale) + _remembered_pref_hint(profile) + TOOL_GUIDANCE
+    # 只在查詢有關鍵字命中時才顯示相關菜色 chips（min_score=1 過濾純無關詢問）
+    menu_ctx_items = retrieve(last_user, max_items=8, min_score=1, **retrieve_opts)
+    menu_notes_map, store_notes_map = await asyncio.gather(
+        asyncio.to_thread(db.list_menu_notes),
+        asyncio.to_thread(db.list_store_notes),
+    )
+    system_prompt = (
+        build_system_prompt(items, locale=req.locale, menu_notes=menu_notes_map, store_notes=store_notes_map)
+        + _remembered_pref_hint(profile)
+        + TOOL_GUIDANCE
+    )
     if req.location:
         system_prompt += build_location_hint(req.location.lat, req.location.lng)
     chat_messages = [{"role": m.role, "content": m.content} for m in req.messages]
@@ -195,14 +226,11 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     async def event_stream():
         reply_parts: list[str] = []
         booking_seen = False
+        booking_turn = False  # 任何訂位/門市工具被呼叫時設 True，用來抑制 menu_context
         suggestions: dict = {"ask": [], "say": []}
         try:
             if conv_event:
                 yield f"data: {json.dumps(conv_event, ensure_ascii=False)}\n\n"
-            # 把這次 RAG 到的菜色名稱傳給前端，讓它顯示縮圖
-            if items:
-                menu_ctx = [{"name": it["name"]} for it in items[:8]]
-                yield f"data: {json.dumps({'menu_context': menu_ctx}, ensure_ascii=False)}\n\n"
             async for kind, payload in llm.stream_chat(
                 system_prompt,
                 chat_messages,
@@ -220,13 +248,29 @@ async def chat(req: ChatRequest) -> StreamingResponse:
                     yield f"data: {json.dumps({'delta': payload}, ensure_ascii=False)}\n\n"
                 elif kind == "tool" and payload.get("name") == "submit_reservation":
                     booking_seen = True
-                    yield f"data: {json.dumps({'booking': payload['result']}, ensure_ascii=False)}\n\n"
+                    booking_turn = True
+                    result = payload["result"]
+                    yield f"data: {json.dumps({'booking': result}, ensure_ascii=False)}\n\n"
+                    if session_id and conversation_id:
+                        await asyncio.to_thread(db.append_message, conversation_id, "booking", json.dumps(result, ensure_ascii=False))
                 elif kind == "tool" and payload.get("name") == "check_availability":
-                    yield f"data: {json.dumps({'availability': payload['result']}, ensure_ascii=False)}\n\n"
+                    booking_turn = True
+                    result = payload["result"]
+                    yield f"data: {json.dumps({'availability': result}, ensure_ascii=False)}\n\n"
+                    if session_id and conversation_id:
+                        await asyncio.to_thread(db.append_message, conversation_id, "availability", json.dumps(result, ensure_ascii=False))
                 elif kind == "tool" and payload.get("name") == "lookup_reservation":
-                    yield f"data: {json.dumps({'reservation_lookup': payload['result']}, ensure_ascii=False)}\n\n"
+                    booking_turn = True
+                    result = payload["result"]
+                    yield f"data: {json.dumps({'reservation_lookup': result}, ensure_ascii=False)}\n\n"
+                    if session_id and conversation_id:
+                        await asyncio.to_thread(db.append_message, conversation_id, "lookup", json.dumps(result, ensure_ascii=False))
                 elif kind == "tool" and payload.get("name") == "show_store_card":
-                    yield f"data: {json.dumps({'store_card': payload['result']}, ensure_ascii=False)}\n\n"
+                    booking_turn = True
+                    result = payload["result"]
+                    yield f"data: {json.dumps({'store_card': result}, ensure_ascii=False)}\n\n"
+                    if session_id and conversation_id:
+                        await asyncio.to_thread(db.append_message, conversation_id, "store_card", json.dumps(result, ensure_ascii=False))
                 elif kind == "tool" and payload.get("name") == "propose_followups":
                     suggestions = payload["result"]  # {"ask": [...], "say": [...]}
             # 串完存助理回覆 + 更新對話時間
@@ -235,6 +279,10 @@ async def chat(req: ChatRequest) -> StreamingResponse:
                     db.append_message, conversation_id, "model", "".join(reply_parts)
                 )
                 await asyncio.to_thread(db.touch_conversation, conversation_id)
+            # 相關菜色 chips：只在非訂位/門市工具回合且有命中關鍵字時才顯示
+            if menu_ctx_items and not booking_turn:
+                menu_ctx = [{"name": it["name"]} for it in menu_ctx_items]
+                yield f"data: {json.dumps({'menu_context': menu_ctx}, ensure_ascii=False)}\n\n"
             # 建議追問放在 done 之前送;訂位回合以 booking 為準,丟棄 suggestions。
             if (suggestions.get("ask") or suggestions.get("say")) and not booking_seen:
                 yield f"data: {json.dumps({'suggestions': suggestions}, ensure_ascii=False)}\n\n"
@@ -439,3 +487,77 @@ async def set_contact(req: ContactSettingRequest, _=Depends(require_admin)):
     await asyncio.to_thread(db.set_setting, _CONTACT_PHONE_KEY, req.phone.strip())
     await asyncio.to_thread(db.set_setting, _CONTACT_NOTE_KEY, req.note.strip())
     return {"ok": True}
+
+
+# ─── 分店特色資訊管理 ─────────────────────────────────────────────────────────
+
+@app.get("/api/admin/stores", dependencies=[Depends(require_admin)])
+async def admin_list_stores() -> dict:
+    """列出所有分店及其已設定的特色資訊。"""
+    store_notes_map = await asyncio.to_thread(db.list_store_notes)
+    stores = [
+        {
+            "name": name,
+            "address": info.get("address", ""),
+            "phone": info.get("phone", ""),
+            "notes": store_notes_map.get(name, {}),
+        }
+        for name, info in _STORES.items()
+    ]
+    return {"stores": stores}
+
+
+@app.post("/api/admin/stores", dependencies=[Depends(require_admin)])
+async def admin_create_store(body: StoreCreateIn) -> dict:
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="分店名稱不能為空")
+    if name in _STORES:
+        raise HTTPException(status_code=409, detail=f"分店「{name}」已存在")
+    new_info = {
+        "address": body.address.strip(),
+        "phone": body.phone.strip(),
+        "hours": body.hours.strip(),
+    }
+    _STORES[name] = new_info
+
+    def _write():
+        with open(_STORES_PATH, "w", encoding="utf-8") as f:
+            json.dump(_STORES, f, ensure_ascii=False, indent=2)
+
+    await asyncio.to_thread(_write)
+    return {"ok": True, "store": {"name": name, **new_info}}
+
+
+@app.put("/api/admin/stores/{store_name:path}", dependencies=[Depends(require_admin)])
+async def admin_update_store(store_name: str, body: StoreNotesIn) -> dict:
+    if store_name not in _STORES:
+        raise HTTPException(status_code=404, detail="找不到此門市")
+    notes = await asyncio.to_thread(db.upsert_store_notes, store_name, body.model_dump())
+    return {"ok": True, "notes": notes}
+
+
+# ─── 菜單品項備注管理 ─────────────────────────────────────────────────────────
+
+@app.get("/api/admin/menu", dependencies=[Depends(require_admin)])
+async def admin_list_menu() -> dict:
+    """列出全部菜單品項及其已設定的備注。"""
+    menu_notes_map = await asyncio.to_thread(db.list_menu_notes)
+    items = [
+        {
+            "name": item["name"],
+            "category": item["category"],
+            "price": item.get("price"),
+            "notes": menu_notes_map.get(item["name"], {}),
+        }
+        for item in MENU_INDEX
+    ]
+    return {"items": items}
+
+
+@app.put("/api/admin/menu/{item_name:path}", dependencies=[Depends(require_admin)])
+async def admin_update_menu_item(item_name: str, body: MenuNoteIn) -> dict:
+    if not any(i["name"] == item_name for i in MENU_INDEX):
+        raise HTTPException(status_code=404, detail="找不到此菜單品項")
+    notes = await asyncio.to_thread(db.upsert_menu_note, item_name, body.model_dump())
+    return {"ok": True, "notes": notes}

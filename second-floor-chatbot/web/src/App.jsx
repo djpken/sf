@@ -55,6 +55,7 @@ function App() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [stores, setStores] = useState([]);
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const mainRef = useRef(null);
   const messagesRef = useRef(null);
   const abortRef = useRef(null);
@@ -116,6 +117,17 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!pendingDeleteId) return;
+    const timer = setTimeout(() => setPendingDeleteId(null), 3000);
+    function handleOutsideClick() { setPendingDeleteId(null); }
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [pendingDeleteId]);
+
   async function refreshConversations() {
     try {
       const res = await fetch(`${API_BASE}/api/conversations?session_id=${encodeURIComponent(sessionId)}`);
@@ -131,21 +143,36 @@ function App() {
     try {
       const res = await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`);
       const data = await res.json();
-      setMessages((data.messages ?? []).map((m) => ({ role: m.role, content: m.content })));
+      setMessages((data.messages ?? []).map((m) => {
+        try {
+          if (m.role === 'booking') return { role: 'booking', booking: JSON.parse(m.content) };
+          if (m.role === 'availability') return { role: 'availability', data: JSON.parse(m.content) };
+          if (m.role === 'lookup') return { role: 'lookup', data: JSON.parse(m.content) };
+          if (m.role === 'store_card') return { role: 'store_card', storeCard: JSON.parse(m.content) };
+        } catch { /* 忽略 JSON parse 錯誤,fallback 到純文字 */ }
+        return { role: m.role, content: m.content };
+      }));
       setConversationId(id);
     } catch {
       setError(t(locale, 'error.load'));
     }
   }
 
-  async function deleteConversation(id, event) {
+  function requestDeleteConversation(id, event) {
     event.stopPropagation();
+    setPendingDeleteId(id);
+  }
+
+  async function confirmDeleteConversation(id, event) {
+    event.stopPropagation();
+    setPendingDeleteId(null);
     try {
       await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
       if (id === conversationId) newChat();
       refreshConversations();
     } catch { /* 略過 */ }
   }
+
 
   function newChat() {
     abortRef.current?.abort();
@@ -201,7 +228,9 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: history.map(({ role, content }) => ({ role, content })),
+          messages: history
+            .filter((m) => m.role === 'user' || m.role === 'model')
+            .map(({ role, content }) => ({ role, content })),
           session_id: sessionId,
           conversation_id: conversationId,
           locale,
@@ -418,15 +447,29 @@ function App() {
               onClick={() => loadConversation(conv.id)}
             >
               <span className="psb-conv-title">{conv.title || t(locale, 'sidebar.untitled')}</span>
-              <span
-                role="button"
-                tabIndex={0}
-                aria-label={t(locale, 'sidebar.delete')}
-                className="psb-conv-delete"
-                onClick={(e) => deleteConversation(conv.id, e)}
-              >
-                ✕
-              </span>
+              {pendingDeleteId === conv.id ? (
+                <span className="psb-conv-delete-confirm" onClick={(e) => e.stopPropagation()}>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t(locale, 'sidebar.deleteConfirm')}
+                    className="psb-conv-delete-yes"
+                    onClick={(e) => confirmDeleteConversation(conv.id, e)}
+                  >
+                    {t(locale, 'sidebar.deleteConfirm')}
+                  </span>
+                </span>
+              ) : (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t(locale, 'sidebar.delete')}
+                  className="psb-conv-delete"
+                  onClick={(e) => requestDeleteConversation(conv.id, e)}
+                >
+                  ✕
+                </span>
+              )}
             </button>
           ))}
         </div>

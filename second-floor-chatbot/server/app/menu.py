@@ -30,6 +30,7 @@ def retrieve(
     query: str = "",
     *,
     max_items: int = 6,
+    min_score: int = 0,
     no_pork: bool = False,
     no_beef: bool = False,
     no_seafood: bool = False,
@@ -70,12 +71,15 @@ def retrieve(
             continue
 
         hay = f"{item['name']} {item['category']} {item.get('description', '')}".lower()
-        score = sum(1 for kw in keywords if kw in hay)
+        q_lower = query.lower()
+        # 正向：token 出現在 hay 中；或反向：hay 中的詞出現在整段 query 中（處理「薯條好吃嗎」無法切分的情況）
+        hay_tokens = [t for t in re.split(r"[，、。！？\s]+", hay) if t]
+        score = sum(1 for kw in keywords if kw in hay) + sum(1 for ht in hay_tokens if len(ht) >= 2 and ht in q_lower)
         scored.append((score, item))
 
     # 穩定排序:分數高優先,同分維持菜單原順序
     scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [item for _, item in scored[:max_items]]
+    return [item for score, item in scored[:max_items] if score >= min_score]
 
 
 # 輕量中文忌口/辣度偵測 → 餵給 retrieve() 做硬篩選。
@@ -122,13 +126,17 @@ def infer_opts(text: str) -> dict:
     return opts
 
 
-def _format_item(item: dict) -> str:
+def _format_item(item: dict, item_notes: dict | None = None) -> str:
     price = f"${item['price']}" if item.get("price") is not None else "價格洽門市"
     desc = item.get("description") or "（詳細說明請洽服務生）"
     tags = item["tags"]
     spice = SPICE_LABELS[tags["spice"]] if tags["spice"] < len(SPICE_LABELS) else "不辣"
+    can_adjust = bool(item_notes and item_notes.get("spice_adjustable"))
+    spice_flag = None
+    if spice != "不辣":
+        spice_flag = f"⚠️ {spice}（可調）" if can_adjust else f"⚠️ {spice}"
     flags = [
-        f"⚠️ {spice}" if spice != "不辣" else None,
+        spice_flag,
         "含豬" if tags["pork"] else None,
         "含牛" if tags["beef"] else None,
         "含海鮮" if tags["seafood"] else None,
@@ -139,10 +147,16 @@ def _format_item(item: dict) -> str:
         "五辛蛋奶素可" if tags["veg"] == "five-spice-lacto-ovo" else None,
     ]
     flag_str = "、".join(f for f in flags if f)
+    extra_parts = []
+    if can_adjust and spice == "不辣":
+        extra_parts.append("可依需求調整辣度")
+    if item_notes and item_notes.get("notes"):
+        extra_parts.append(item_notes["notes"])
+    extra = f"\n  📝 {'、'.join(extra_parts)}" if extra_parts else ""
     return (
         f"- **{item['name']}**（{item['category']}）{price}\n"
         f"  {desc}\n"
-        f"  {f'[{flag_str}]' if flag_str else '[無特殊標注]'}"
+        f"  {f'[{flag_str}]' if flag_str else '[無特殊標注]'}{extra}"
     )
 
 
@@ -156,11 +170,44 @@ _LANG_DIRECTIVE: dict[str, str] = {
 }
 
 
-def build_system_prompt(items: list[dict] | None = None, locale: str = "zh-TW") -> str:
+def _build_store_notes_section(store_notes: dict) -> str:
+    if not store_notes:
+        return ""
+    parts = []
+    for store_name, sn in store_notes.items():
+        info = []
+        if sn.get("seating_capacity"):
+            info.append(f"座位數約 {sn['seating_capacity']} 席")
+        if sn.get("table_spacing"):
+            info.append(f"桌距{sn['table_spacing']}")
+        if sn.get("has_private_room"):
+            info.append("有包廂")
+        if sn.get("has_outdoor"):
+            info.append("有戶外區")
+        if sn.get("noise_level"):
+            info.append(f"環境{sn['noise_level']}")
+        if sn.get("notes"):
+            info.append(sn["notes"])
+        if info:
+            parts.append(f"- **{store_name}**：{'、'.join(info)}")
+    if not parts:
+        return ""
+    return "\n\n## 分店特色資訊\n\n" + "\n".join(parts)
+
+
+def build_system_prompt(
+    items: list[dict] | None = None,
+    locale: str = "zh-TW",
+    *,
+    menu_notes: dict | None = None,
+    store_notes: dict | None = None,
+) -> str:
     """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。"""
     menu_items = items if items is not None else MENU_INDEX
-    menu_text = "\n\n".join(_format_item(i) for i in menu_items)
+    notes_map = menu_notes or {}
+    menu_text = "\n\n".join(_format_item(i, notes_map.get(i["name"])) for i in menu_items)
     lang = _LANG_DIRECTIVE.get(locale, _LANG_DIRECTIVE["zh-TW"])
+    store_notes_section = _build_store_notes_section(store_notes or {})
 
     return f"""你是「貳樓 Second Floor Cafe」的 AI 助理。{lang} 你的角色是幫客人:
 
@@ -184,7 +231,7 @@ def build_system_prompt(items: list[dict] | None = None, locale: str = "zh-TW") 
 常見門市:敦南店、公館店、微風台北車站店、仁愛店、南港車站店、師大店、
 中山南西店、微風南山店、淡水站前店、板橋店、林口店、桃園台茂店、
 桃園華泰店、新竹巨城店、台中公益店、台中秀泰文心店、嘉義店、台南店、
-高雄店、高雄夢時代店。
+高雄店、高雄夢時代店。{store_notes_section}
 
 ## 菜單知識庫（本次對話可用品項）
 
