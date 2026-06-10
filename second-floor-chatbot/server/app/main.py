@@ -217,6 +217,37 @@ def _remembered_pref_hint(prefs: dict) -> str:
     )
 
 
+# 每次請求帶回後端的最近對話訊息數上限。前端每輪送完整歷史(無截斷),
+# 後端在此把舊訊息裁掉:長對話不會讓 token/延遲線性膨脹,也避免 flash-lite
+# 注意力被中段冗訊稀釋。16 則 ≈ 最近 8 個來回,夠 chatbot 維持脈絡。
+MAX_HISTORY_MESSAGES = 16
+
+# 觸發「需要分店特色資訊」的關鍵字。沒指名門市、但問到店況時(包廂/座位/
+# 環境等)才把全部分店備註帶進 prompt;純菜單詢問則完全不帶,避免無關膨脹。
+_STORE_FEATURE_KEYWORDS = (
+    "包廂", "包場", "座位", "位子", "桌距", "戶外", "外面", "環境",
+    "安靜", "吵", "氣氛", "聚餐", "人多", "幾位", "幾人", "大桌",
+    "private room", "outdoor", "seating", "quiet", "noisy",
+)
+
+
+def _select_store_notes(conv_text: str, store_notes_map: dict) -> dict:
+    """依對話內容挑出要進 prompt 的分店備註。
+
+    - 對話有提到特定門市名 → 只給那幾家(精準、最省)。
+    - 沒指名、但問到店況關鍵字 → 給全部(例如「哪家有包廂」是正當的全店比較)。
+    - 純菜單/其他詢問 → 不帶任何分店備註(避免每次都扛全部)。
+    """
+    if not store_notes_map:
+        return {}
+    mentioned = {name: sn for name, sn in store_notes_map.items() if name in conv_text}
+    if mentioned:
+        return mentioned
+    if any(kw in conv_text.lower() for kw in _STORE_FEATURE_KEYWORDS):
+        return store_notes_map
+    return {}
+
+
 @app.post("/api/chat", dependencies=[Depends(_check_rate_limit)])
 async def chat(req: ChatRequest) -> StreamingResponse:
     last_user = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
@@ -240,12 +271,15 @@ async def chat(req: ChatRequest) -> StreamingResponse:
         asyncio.to_thread(db.get_setting, _BEHAVIOR_RULES_KEY),
         asyncio.to_thread(db.list_qa_pairs),
     )
+    # 分店備註只在對話相關時帶入(掃最近幾則訊息,使用者先前提到的門市也算)。
+    conv_text = " ".join(m.content for m in req.messages[-MAX_HISTORY_MESSAGES:] if m.role == "user")
+    store_notes_ctx = _select_store_notes(conv_text, store_notes_map)
     system_prompt = (
         build_system_prompt(
             items,
             locale=req.locale,
             menu_notes=menu_notes_map,
-            store_notes=store_notes_map,
+            store_notes=store_notes_ctx,
             behavior_rules=behavior_rules,
             qa_pairs=qa_pairs,
         )
@@ -254,7 +288,8 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     )
     if req.location:
         system_prompt += build_location_hint(req.location.lat, req.location.lng)
-    chat_messages = [{"role": m.role, "content": m.content} for m in req.messages]
+    # 只把最近 MAX_HISTORY_MESSAGES 則送進模型,舊訊息裁掉(持久化仍存完整)。
+    chat_messages = [{"role": m.role, "content": m.content} for m in req.messages[-MAX_HISTORY_MESSAGES:]]
 
     # 對話持久化:建立/沿用對話,先存使用者訊息。
     conv_event: dict | None = None

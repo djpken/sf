@@ -67,6 +67,11 @@ curl http://127.0.0.1:8000/api/health     # {"ok":true,"provider":"gemini","mode
 `app/db.py` 同步 sqlite3,在 async 端點一律用 `asyncio.to_thread()` 包起來避免卡事件迴圈。
 
 - 身分 = 前端 localStorage 產生的 `session_id`,綁定對話歷史與忌口 profile。
+- **送進模型的對話有截斷**:前端每輪送完整歷史,但 `main.py` 只取最近
+  `MAX_HISTORY_MESSAGES`(16 則 ≈ 8 來回)進 LLM,避免長對話 token/延遲線性膨脹、
+  稀釋 flash-lite 注意力。**持久化(`append_message`)仍存完整歷史**,只裁送模型的部分。
+- **分店備註按需帶入**:`_select_store_notes()` 依對話挑分店特色 — 提到特定門市→只給那幾家;
+  問到店況關鍵字(包廂/座位/環境…)但沒指名→給全部;純菜單詢問→完全不帶。避免每次扛全部分店。
 - **長期 vs 當下的區別很關鍵**:只有 `db.PROFILE_PREF_KEYS`(不吃豬/牛/海鮮/素/堅果)會寫進
   profile 並跨對話自動套用;辣度等「看當下心情」的偵測只用於本次 `retrieve()`,不長期記憶。
 
