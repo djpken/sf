@@ -385,7 +385,6 @@ function Admin() {
       <header className="admin-header">
         <div>
           <h1>管理後台</h1>
-          <p className="admin-muted">管理 LLM provider、分店特色、菜單備注。</p>
         </div>
         <div className="admin-header-actions">
           <a className="admin-btn" href="/">← 回聊天</a>
