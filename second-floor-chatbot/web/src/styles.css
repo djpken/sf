@@ -535,20 +535,6 @@ h1, h2, p { margin: 0; }
   box-shadow: var(--ds-sh-flat);
 }
 
-/* ─── Streaming caret ─── */
-.message.is-streaming > p::after,
-.message.is-streaming .md-content > :last-child::after,
-.message.is-streaming .recommendation-bubble > p::after {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 1em;
-  margin-left: 2px;
-  border-right: 2px solid var(--brand);
-  vertical-align: -2px;
-  animation: stream-caret .9s steps(1) infinite;
-}
-
 /* ─── Thinking dots ─── */
 .message.is-thinking p {
   min-height: 24px;
@@ -1163,11 +1149,6 @@ h1, h2, p { margin: 0; }
   25%    { opacity: 1;   transform: translateY(-8px); }
   50%    { opacity: .5;  transform: translateY(0); }
   100%   { opacity: .5;  transform: translateY(0); }
-}
-
-@keyframes stream-caret {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
