@@ -535,20 +535,6 @@ h1, h2, p { margin: 0; }
   box-shadow: var(--ds-sh-flat);
 }
 
-/* ─── Streaming caret ─── */
-.message.is-streaming > p::after,
-.message.is-streaming .md-content > :last-child::after,
-.message.is-streaming .recommendation-bubble > p::after {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 1em;
-  margin-left: 2px;
-  border-right: 2px solid var(--brand);
-  vertical-align: -2px;
-  animation: stream-caret .9s steps(1) infinite;
-}
-
 /* ─── Thinking dots ─── */
 .message.is-thinking p {
   min-height: 24px;
@@ -934,6 +920,12 @@ h1, h2, p { margin: 0; }
 }
 .sc-phone:hover { text-decoration: underline; }
 
+.sc-phone-note {
+  color: var(--ds-ink3);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .sc-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1073,6 +1065,12 @@ h1, h2, p { margin: 0; }
   cursor: not-allowed;
 }
 
+/* 串流中的停止鍵：以中性深色與送出鍵區隔，方塊圖示表示「停止」。 */
+.composer-stop {
+  background: var(--ink, #2b2b2b);
+}
+.composer-stop:hover:not(:disabled) { background: #000; }
+
 .send-arrow-icon {
   font-size: 18px;
   font-weight: 700;
@@ -1163,11 +1161,6 @@ h1, h2, p { margin: 0; }
   25%    { opacity: 1;   transform: translateY(-8px); }
   50%    { opacity: .5;  transform: translateY(0); }
   100%   { opacity: .5;  transform: translateY(0); }
-}
-
-@keyframes stream-caret {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1548,7 +1541,15 @@ h1, h2, p { margin: 0; }
   gap: 12px;
 }
 .contact-store-row + .contact-store-row { border-top: 1px solid var(--line); }
-.contact-store-name { font-size: 14px; color: var(--ink); flex: 1; }
+.contact-store-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.contact-store-name { font-size: 14px; color: var(--ink); }
+.contact-store-note { font-size: 12px; color: var(--ds-ink3); }
 .contact-store-phone {
   font-size: 14px;
   color: var(--brand);

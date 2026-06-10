@@ -25,6 +25,46 @@ MENU_INDEX: list[dict] = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
 
 SPICE_LABELS = ["不辣", "微辣", "小辣", "極辣"]
 
+# 純數字/時間 token（人數、時段、價格等）不是菜單搜尋詞,排除以免「4 個朋友」誤中
+# 「4吋蛋糕」、或「18:00」誤中描述裡的數字。
+_NUMERIC_TOKEN = re.compile(r"^[\d:：.\-]+$")
+
+
+def _is_search_token(tok: str) -> bool:
+    return bool(tok) and _NUMERIC_TOKEN.match(tok) is None
+
+
+def _longest_common_substring_len(a: str, b: str) -> int:
+    """回傳 a、b 的最長連續共同子字串長度(用於判斷使用者是否點名某道菜)。"""
+    if not a or not b:
+        return 0
+    prev = [0] * (len(b) + 1)
+    best = 0
+    for i in range(1, len(a) + 1):
+        curr = [0] * (len(b) + 1)
+        for j in range(1, len(b) + 1):
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
+                if curr[j] > best:
+                    best = curr[j]
+        prev = curr
+    return best
+
+
+# 使用者「點名」某道菜的判定門檻:菜名與查詢的最長連續重疊 ≥ 此字數即視為點名。
+# 設 3 是為了讓「鹽水雞」「奶油麵」這類核心名也算點名(寧可放行帶標註,也別謊稱沒有)。
+_NAMED_DISH_MIN_OVERLAP = 3
+
+
+def _is_named_dish(name: str, query: str) -> bool:
+    if not query:
+        return False
+    name_l = name.lower()
+    query_l = query.lower()
+    if name_l in query_l:
+        return True
+    return _longest_common_substring_len(name_l, query_l) >= _NAMED_DISH_MIN_OVERLAP
+
 
 def retrieve(
     query: str = "",
@@ -45,36 +85,51 @@ def retrieve(
 
     硬篩選(忌口/辣度)直接把不合格品項排除,模型看到的就是合格清單。
     """
-    keywords = [k for k in re.split(r"[，、。！？\s]+", query.lower()) if k]
+    keywords = [k for k in re.split(r"[，、。！？\s]+", query.lower()) if _is_search_token(k)]
 
     scored: list[tuple[int, dict]] = []
     for item in MENU_INDEX:
         tags = item["tags"]
-        # hard filters
-        if no_pork and tags["pork"]:
-            continue
-        if no_beef and tags["beef"]:
-            continue
-        if no_seafood and tags["seafood"]:
-            continue
-        if max_spice is not None and tags["spice"] > max_spice:
-            continue
-        if vegetarian and tags["veg"] != vegetarian and tags["veg"] != "lacto-ovo":
-            continue
-        if no_nuts and tags["nut"]:
-            continue
-        if no_alcohol and tags["alcohol"]:
-            continue
-        if pregnant_safe and not tags["pregnant"]:
-            continue
+        # 分類屬檢索範圍(非忌口),點名也不豁免
         if category and item["category"] != category:
             continue
+
+        # 忌口/辣度硬篩選:收集違反項。一般情況直接排除;但若使用者「點名」這道菜,
+        # 改為帶衝突標註進清單,讓模型誠實說「這道菜單有、但不符您的設定」,
+        # 而非謊稱「沒有這道品項」(最傷信任)。
+        conflicts = []
+        if no_pork and tags["pork"]:
+            conflicts.append("含豬肉")
+        if no_beef and tags["beef"]:
+            conflicts.append("含牛肉")
+        if no_seafood and tags["seafood"]:
+            conflicts.append("含海鮮")
+        if max_spice is not None and tags["spice"] > max_spice:
+            conflicts.append("有辣度")
+        if vegetarian and tags["veg"] != vegetarian and tags["veg"] != "lacto-ovo":
+            conflicts.append("非素食")
+        if no_nuts and tags["nut"]:
+            conflicts.append("含堅果")
+        if no_alcohol and tags["alcohol"]:
+            conflicts.append("含酒")
+        if pregnant_safe and not tags["pregnant"]:
+            conflicts.append("孕婦不宜")
+
+        named = _is_named_dish(item["name"], query)
+        if conflicts:
+            if not named:
+                continue
+            item = {**item, "_diet_conflict": "、".join(conflicts)}
 
         hay = f"{item['name']} {item['category']} {item.get('description', '')}".lower()
         q_lower = query.lower()
         # 正向：token 出現在 hay 中；或反向：hay 中的詞出現在整段 query 中（處理「薯條好吃嗎」無法切分的情況）
         hay_tokens = [t for t in re.split(r"[，、。！？\s]+", hay) if t]
-        score = sum(1 for kw in keywords if kw in hay) + sum(1 for ht in hay_tokens if len(ht) >= 2 and ht in q_lower)
+        score = sum(1 for kw in keywords if kw in hay) + sum(
+            1 for ht in hay_tokens if len(ht) >= 2 and _is_search_token(ht) and ht in q_lower
+        )
+        if named:
+            score += 100  # 點名的菜保證排進清單(即使整段菜名無法被切分而關鍵字命中為 0)
         scored.append((score, item))
 
     # 穩定排序:分數高優先,同分維持菜單原順序
@@ -108,7 +163,14 @@ def infer_opts(text: str) -> dict:
         "vegetarian", "vegan", "veggie",
     )):
         opts["vegetarian"] = "lacto-ovo"
-    if any(k in t for k in (
+    # 「可以不要辣嗎 / 能不能去辣」是詢問某道菜能否客製去辣,不是宣告本人吃全程零辣。
+    # 若帶這類能力詢問詞,就不設 max_spice 硬篩,否則微辣的指名菜會在進 prompt 前被剔除,
+    # 模型看不到而誤答「沒有這道品項」。真正想要不辣餐點的「有不辣的嗎」不含這些詞,仍正常硬篩。
+    asking_can_adjust = any(k in t for k in (
+        "可以", "能不能", "可不可以", "能否", "可否", "可調", "調整", "調成",
+        "can i", "can you", "could you", "is it possible",
+    ))
+    if not asking_can_adjust and any(k in t for k in (
         "不要辣", "完全去辣", "去辣", "不吃辣", "不辣",
         "not spicy", "no spice", "no spicy", "no chili", "mild",
     )):
@@ -148,6 +210,14 @@ def _format_item(item: dict, item_notes: dict | None = None) -> str:
     ]
     flag_str = "、".join(f for f in flags if f)
     extra_parts = []
+    conflict = item.get("_diet_conflict")
+    if conflict:
+        # 客人點名了這道菜,但它不符合客人設定(忌口/辣度)。菜單確實有提供,
+        # 務必據實說明「這道有、但…」,不可說「沒有這道品項」;同時別主動推薦它。
+        extra_parts.append(
+            f"⚠️ 此品項菜單有提供,但{conflict},不符合客人目前的飲食設定;"
+            f"請據實說明(勿說查無此品項),並改推薦合適的選擇,勿主動推薦本品項"
+        )
     if can_adjust and spice == "不辣":
         extra_parts.append("可依需求調整辣度")
     if item_notes and item_notes.get("notes"):
@@ -195,19 +265,58 @@ def _build_store_notes_section(store_notes: dict) -> str:
     return "\n\n## 分店特色資訊\n\n" + "\n".join(parts)
 
 
+def _build_qa_section(qa_pairs: list | None) -> str:
+    """把 admin 設計的「指定問答」組成 system prompt 區段(類似 skills 的 trigger→answer)。"""
+    pairs = [
+        p
+        for p in (qa_pairs or [])
+        if p.get("enabled", True) and (p.get("question") or "").strip() and (p.get("answer") or "").strip()
+    ]
+    if not pairs:
+        return ""
+    lines = []
+    for p in pairs:
+        q = p["question"].strip()
+        a = p["answer"].strip().replace("\n", "\n  ")
+        lines.append(f"- 當客人問到/提到「{q}」這類情境時,務必依下列內容回答:\n  {a}")
+    return (
+        "\n\n## 指定問答（最高優先,務必遵循）\n\n"
+        "以下是店家設定的標準問答。當客人的問題符合某條情境時,你的回答必須以對應內容為準"
+        "（可用自然、對話的口吻轉述,但事實與重點不可更動,也不可自行補上未提供的資訊）:\n\n"
+        + "\n".join(lines)
+    )
+
+
+# 行為守則預設值。admin 未在後台覆寫時用這份;後台可在「行為守則」分頁編輯。
+DEFAULT_BEHAVIOR_RULES = """- **只服務貳樓相關話題**:菜單、餐點、訂位、門市、用餐情境等。遇到與貳樓無關的問題（例如天氣、新聞、寫程式、數學、其他餐廳、通用閒聊、政治時事等），一律婉拒並把對話帶回貳樓,例如:「我是貳樓的點餐 / 訂位小幫手,這部分我幫不上忙,不過想吃點什麼或要訂位都可以問我喔～」。不要回答、不要嘗試解題,即使客人堅持也只引導回貳樓主題
+- 不確定庫存或可訂時段時,誠實說「需向門市確認」,不捏造資料
+- 推薦時說明「為何適合」,而不是列出整份菜單
+- 忌口限制一律先確認再推薦,避免讓客人自己篩
+- 不承諾窗邊位、特定座位安排（系統目前無法偵測）
+- 訂位時段以 15 分鐘為單位,不提供候位功能
+- 回應保持簡潔,對話感強,不使用過多標題符號"""
+
+
 def build_system_prompt(
     items: list[dict] | None = None,
     locale: str = "zh-TW",
     *,
     menu_notes: dict | None = None,
     store_notes: dict | None = None,
+    behavior_rules: str | None = None,
+    qa_pairs: list | None = None,
 ) -> str:
-    """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。"""
+    """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。
+
+    behavior_rules / qa_pairs 可由後台 admin 動態覆寫;為空時用預設值。
+    """
     menu_items = items if items is not None else MENU_INDEX
     notes_map = menu_notes or {}
     menu_text = "\n\n".join(_format_item(i, notes_map.get(i["name"])) for i in menu_items)
     lang = _LANG_DIRECTIVE.get(locale, _LANG_DIRECTIVE["zh-TW"])
     store_notes_section = _build_store_notes_section(store_notes or {})
+    rules = (behavior_rules or "").strip() or DEFAULT_BEHAVIOR_RULES
+    qa_section = _build_qa_section(qa_pairs)
 
     return f"""你是「貳樓 Second Floor Cafe」的 AI 助理。{lang} 你的角色是幫客人:
 
@@ -218,12 +327,7 @@ def build_system_prompt(
 
 ## 行為守則
 
-- 不確定庫存或可訂時段時,誠實說「需向門市確認」,不捏造資料
-- 推薦時說明「為何適合」,而不是列出整份菜單
-- 忌口限制一律先確認再推薦,避免讓客人自己篩
-- 不承諾窗邊位、特定座位安排（系統目前無法偵測）
-- 訂位時段以 15 分鐘為單位,不提供候位功能
-- 回應保持簡潔,對話感強,不使用過多標題符號
+{rules}{qa_section}
 
 ## 門市資訊
 

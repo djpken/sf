@@ -38,11 +38,12 @@ from .booking import (  # noqa: E402
     LOOKUP_RESERVATION_TOOL_SPEC,
     RESERVATION_TOOL_SPEC,
     STORE_CARD_TOOL_SPEC,
+    STORE_INFO,
     TOOL_GUIDANCE,
     TOOLS,
     build_location_hint,
 )
-from .menu import MENU_INDEX, build_system_prompt, infer_opts, retrieve  # noqa: E402
+from .menu import DEFAULT_BEHAVIOR_RULES, MENU_INDEX, build_system_prompt, infer_opts, retrieve  # noqa: E402
 
 _STORES_PATH = os.path.join(os.path.dirname(__file__), "data", "stores.json")
 with open(_STORES_PATH, encoding="utf-8") as _f:
@@ -134,6 +135,8 @@ class StoreNotesIn(BaseModel):
     has_outdoor: bool = False
     noise_level: str = ""
     notes: str = ""
+    phone: str | None = None       # None = 不變更;寫入 stores.json,非 DB notes
+    phone_note: str | None = None  # 電話備注說明,同上
 
 
 class StoreCreateIn(BaseModel):
@@ -214,6 +217,37 @@ def _remembered_pref_hint(prefs: dict) -> str:
     )
 
 
+# 每次請求帶回後端的最近對話訊息數上限。前端每輪送完整歷史(無截斷),
+# 後端在此把舊訊息裁掉:長對話不會讓 token/延遲線性膨脹,也避免 flash-lite
+# 注意力被中段冗訊稀釋。16 則 ≈ 最近 8 個來回,夠 chatbot 維持脈絡。
+MAX_HISTORY_MESSAGES = 16
+
+# 觸發「需要分店特色資訊」的關鍵字。沒指名門市、但問到店況時(包廂/座位/
+# 環境等)才把全部分店備註帶進 prompt;純菜單詢問則完全不帶,避免無關膨脹。
+_STORE_FEATURE_KEYWORDS = (
+    "包廂", "包場", "座位", "位子", "桌距", "戶外", "外面", "環境",
+    "安靜", "吵", "氣氛", "聚餐", "人多", "幾位", "幾人", "大桌",
+    "private room", "outdoor", "seating", "quiet", "noisy",
+)
+
+
+def _select_store_notes(conv_text: str, store_notes_map: dict) -> dict:
+    """依對話內容挑出要進 prompt 的分店備註。
+
+    - 對話有提到特定門市名 → 只給那幾家(精準、最省)。
+    - 沒指名、但問到店況關鍵字 → 給全部(例如「哪家有包廂」是正當的全店比較)。
+    - 純菜單/其他詢問 → 不帶任何分店備註(避免每次都扛全部)。
+    """
+    if not store_notes_map:
+        return {}
+    mentioned = {name: sn for name, sn in store_notes_map.items() if name in conv_text}
+    if mentioned:
+        return mentioned
+    if any(kw in conv_text.lower() for kw in _STORE_FEATURE_KEYWORDS):
+        return store_notes_map
+    return {}
+
+
 @app.post("/api/chat", dependencies=[Depends(_check_rate_limit)])
 async def chat(req: ChatRequest) -> StreamingResponse:
     last_user = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
@@ -231,18 +265,31 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     items = retrieve(last_user, max_items=24, **retrieve_opts)
     # 只在查詢有關鍵字命中時才顯示相關菜色 chips（min_score=1 過濾純無關詢問）
     menu_ctx_items = retrieve(last_user, max_items=8, min_score=1, **retrieve_opts)
-    menu_notes_map, store_notes_map = await asyncio.gather(
+    menu_notes_map, store_notes_map, behavior_rules, qa_pairs = await asyncio.gather(
         asyncio.to_thread(db.list_menu_notes),
         asyncio.to_thread(db.list_store_notes),
+        asyncio.to_thread(db.get_setting, _BEHAVIOR_RULES_KEY),
+        asyncio.to_thread(db.list_qa_pairs),
     )
+    # 分店備註只在對話相關時帶入(掃最近幾則訊息,使用者先前提到的門市也算)。
+    conv_text = " ".join(m.content for m in req.messages[-MAX_HISTORY_MESSAGES:] if m.role == "user")
+    store_notes_ctx = _select_store_notes(conv_text, store_notes_map)
     system_prompt = (
-        build_system_prompt(items, locale=req.locale, menu_notes=menu_notes_map, store_notes=store_notes_map)
+        build_system_prompt(
+            items,
+            locale=req.locale,
+            menu_notes=menu_notes_map,
+            store_notes=store_notes_ctx,
+            behavior_rules=behavior_rules,
+            qa_pairs=qa_pairs,
+        )
         + _remembered_pref_hint(profile)
         + TOOL_GUIDANCE
     )
     if req.location:
         system_prompt += build_location_hint(req.location.lat, req.location.lng)
-    chat_messages = [{"role": m.role, "content": m.content} for m in req.messages]
+    # 只把最近 MAX_HISTORY_MESSAGES 則送進模型,舊訊息裁掉(持久化仍存完整)。
+    chat_messages = [{"role": m.role, "content": m.content} for m in req.messages[-MAX_HISTORY_MESSAGES:]]
 
     # 對話持久化:建立/沿用對話,先存使用者訊息。
     conv_event: dict | None = None
@@ -515,6 +562,7 @@ async def get_stores():
 
 _CONTACT_PHONE_KEY = "contact_phone"
 _CONTACT_NOTE_KEY = "contact_note"
+_BEHAVIOR_RULES_KEY = "behavior_rules"
 
 
 @app.get("/api/settings/contact")
@@ -537,6 +585,63 @@ async def set_contact(req: ContactSettingRequest, _=Depends(require_admin)):
     return {"ok": True}
 
 
+# ─── 行為守則(system prompt 可編輯區) ────────────────────────────────────────
+
+class BehaviorRulesRequest(BaseModel):
+    rules: str = ""
+
+
+@app.get("/api/admin/settings/behavior-rules", dependencies=[Depends(require_admin)])
+async def get_behavior_rules():
+    saved = await asyncio.to_thread(db.get_setting, _BEHAVIOR_RULES_KEY)
+    return {"rules": saved or "", "default": DEFAULT_BEHAVIOR_RULES}
+
+
+@app.put("/api/admin/settings/behavior-rules", dependencies=[Depends(require_admin)])
+async def set_behavior_rules(req: BehaviorRulesRequest):
+    await asyncio.to_thread(db.set_setting, _BEHAVIOR_RULES_KEY, req.rules.strip())
+    return {"ok": True}
+
+
+# ─── 指定問答 Q&A(類 skills 的 trigger→answer) ─────────────────────────────
+
+class QaPairRequest(BaseModel):
+    question: str
+    answer: str
+    enabled: bool = True
+    sort_order: int = 0
+
+
+@app.get("/api/admin/qa", dependencies=[Depends(require_admin)])
+async def list_qa():
+    pairs = await asyncio.to_thread(db.list_qa_pairs)
+    return {"pairs": pairs}
+
+
+@app.post("/api/admin/qa", dependencies=[Depends(require_admin)])
+async def create_qa(req: QaPairRequest):
+    if not req.question.strip() or not req.answer.strip():
+        raise HTTPException(status_code=400, detail="問題與回答都不可空白")
+    pair = await asyncio.to_thread(db.create_qa_pair, req.model_dump())
+    return {"ok": True, "pair": pair}
+
+
+@app.put("/api/admin/qa/{qa_id}", dependencies=[Depends(require_admin)])
+async def update_qa(qa_id: str, req: QaPairRequest):
+    if not req.question.strip() or not req.answer.strip():
+        raise HTTPException(status_code=400, detail="問題與回答都不可空白")
+    pair = await asyncio.to_thread(db.update_qa_pair, qa_id, req.model_dump())
+    if pair is None:
+        raise HTTPException(status_code=404, detail="找不到此問答")
+    return {"ok": True, "pair": pair}
+
+
+@app.delete("/api/admin/qa/{qa_id}", dependencies=[Depends(require_admin)])
+async def delete_qa(qa_id: str):
+    await asyncio.to_thread(db.delete_qa_pair, qa_id)
+    return {"ok": True}
+
+
 # ─── 分店特色資訊管理 ─────────────────────────────────────────────────────────
 
 @app.get("/api/admin/stores", dependencies=[Depends(require_admin)])
@@ -548,6 +653,7 @@ async def admin_list_stores() -> dict:
             "name": name,
             "address": info.get("address", ""),
             "phone": info.get("phone", ""),
+            "phone_note": info.get("phone_note", ""),
             "notes": store_notes_map.get(name, {}),
         }
         for name, info in _STORES.items()
@@ -568,20 +674,32 @@ async def admin_create_store(body: StoreCreateIn) -> dict:
         "hours": body.hours.strip(),
     }
     _STORES[name] = new_info
+    STORE_INFO[name] = new_info  # 同步 booking 模組的店資料(它在 import 時另載一份)
 
-    def _write():
-        with open(_STORES_PATH, "w", encoding="utf-8") as f:
-            json.dump(_STORES, f, ensure_ascii=False, indent=2)
-
-    await asyncio.to_thread(_write)
+    await asyncio.to_thread(_write_stores)
     return {"ok": True, "store": {"name": name, **new_info}}
+
+
+def _write_stores() -> None:
+    with open(_STORES_PATH, "w", encoding="utf-8") as f:
+        json.dump(_STORES, f, ensure_ascii=False, indent=2)
 
 
 @app.put("/api/admin/stores/{store_name:path}", dependencies=[Depends(require_admin)])
 async def admin_update_store(store_name: str, body: StoreNotesIn) -> dict:
     if store_name not in _STORES:
         raise HTTPException(status_code=404, detail="找不到此門市")
-    notes = await asyncio.to_thread(db.upsert_store_notes, store_name, body.model_dump())
+    if body.phone is not None or body.phone_note is not None:
+        info = _STORES[store_name]
+        if body.phone is not None:
+            info["phone"] = body.phone.strip()
+        if body.phone_note is not None:
+            info["phone_note"] = body.phone_note.strip()
+        STORE_INFO[store_name] = info  # 同步 booking 模組,讓 show_store_card 立即生效
+        await asyncio.to_thread(_write_stores)
+    notes = await asyncio.to_thread(
+        db.upsert_store_notes, store_name, body.model_dump(exclude={"phone", "phone_note"})
+    )
     return {"ok": True, "notes": notes}
 
 
