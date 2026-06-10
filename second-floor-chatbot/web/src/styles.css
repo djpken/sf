@@ -556,6 +556,28 @@ h1, h2, p { margin: 0; }
 .message.is-thinking span:nth-child(2) { animation-delay: .14s; }
 .message.is-thinking span:nth-child(3) { animation-delay: .28s; }
 
+/* 串流文字跑完到 follow-ups 出現之間的延續打字指示(空窗回饋) */
+.msg-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  min-height: 14px;
+}
+
+.msg-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--brand);
+  opacity: .5;
+  will-change: transform, opacity;
+  animation: thinking-dot .7s ease-out infinite;
+}
+
+.msg-typing span:nth-child(2) { animation-delay: .14s; }
+.msg-typing span:nth-child(3) { animation-delay: .28s; }
+
 /* ─── 歡迎空狀態 ─── */
 .welcome {
   display: flex;
@@ -1172,7 +1194,8 @@ h1, h2, p { margin: 0; }
        不是消滅所有過渡。 */
   }
   /* thinking dots：改成 opacity pulse，保留 loading 視覺回饋 */
-  .message.is-thinking span {
+  .message.is-thinking span,
+  .msg-typing span {
     animation-name: thinking-dot-reduced !important;
     animation-duration: 1s !important;
     animation-iteration-count: infinite !important;

@@ -6,6 +6,9 @@ import { getLocale, persistLocale, t, STARTERS } from './i18n';
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 const isDev = import.meta.env.DEV;
 
+// 文字 delta 平均間隔約 40ms;停超過這個門檻仍未結束串流,視為「文字已停、正在等 follow-ups」的空窗。
+const TEXT_SETTLE_MS = 600;
+
 function getSessionId() {
   let id = localStorage.getItem('sf_session_id');
   if (!id) {
@@ -60,6 +63,7 @@ function App() {
   const mainRef = useRef(null);
   const messagesRef = useRef(null);
   const abortRef = useRef(null);
+  const gapTimerRef = useRef(null);      // debounce:偵測文字 delta 是否已停(進入等 follow-ups 的空窗)
   const locationRef = useRef(null);      // 快取 {lat, lng}，取得失敗為 null
   const locationAskedRef = useRef(false); // 是否已嘗試請求過定位（只跳一次權限）
   // 每段對話的完整訊息快取（含 suggestions / menuContext / 串流中內容）。
@@ -353,6 +357,7 @@ function App() {
       setError(err.message || '連線發生問題');
       setConvMessages(streamKeyRef.current, (items) => items.filter((m) => !(m.role === 'model' && m.streaming && !m.content)));
     } finally {
+      if (gapTimerRef.current) { clearTimeout(gapTimerRef.current); gapTimerRef.current = null; }
       setIsBusy(false);
       abortRef.current = null;
       streamKeyRef.current = null;
@@ -362,14 +367,24 @@ function App() {
   // 以下串流寫入一律針對 streamKeyRef 指向的對話;若正在看它,setConvMessages 會同步畫面,
   // 切走時則只更新背景快取,讓串流繼續而不影響當前畫面。
   function appendDelta(delta) {
+    if (gapTimerRef.current) clearTimeout(gapTimerRef.current);
     setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       const last = next[next.length - 1];
       if (last?.role === 'model' && last.streaming) {
-        next[next.length - 1] = { ...last, content: last.content + delta };
+        // textSettled 在每個 delta 重置為 false:文字還在流動時就不顯示空窗指示器。
+        next[next.length - 1] = { ...last, content: last.content + delta, textSettled: false };
       }
       return next;
     });
+    // 距下一個 delta 超過門檻仍未結束 → 視為文字已停,標記進入等 follow-ups 的空窗。
+    gapTimerRef.current = setTimeout(markTextSettled, TEXT_SETTLE_MS);
+  }
+
+  function markTextSettled() {
+    gapTimerRef.current = null;
+    setConvMessages(streamKeyRef.current, (items) =>
+      items.map((m) => (m.role === 'model' && m.streaming && m.content ? { ...m, textSettled: true } : m)));
   }
 
   function appendBooking(booking) {
@@ -889,6 +904,13 @@ function App() {
                         <div className="md-content">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                         </div>
+                        {/* 文字串流完到 follow-ups 出現之間,模型還在尾端產生建議(terminal tool)。
+                            僅在這段空窗(textSettled:文字已停)顯示指示,串流中不顯示。 */}
+                        {m.streaming && m.content && m.textSettled && (
+                          <p className="msg-typing" aria-label={t(locale, 'thinking.preparing')}>
+                            <span /><span /><span />
+                          </p>
+                        )}
                         {!m.streaming && (isDev || m.timestamp) && (
                           <div className="bot-msg-actions">
                             {isDev && (
