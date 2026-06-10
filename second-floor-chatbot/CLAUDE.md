@@ -39,9 +39,10 @@ curl http://127.0.0.1:8000/api/health     # {"ok":true,"provider":"gemini","mode
 **前後端分離、SSE streaming 對話。** 前端 `web/src/App.jsx` 單檔 fetch `/api/chat` 讀 SSE;
 後端 `server/app/main.py` 是唯一 API 入口,串起 RAG → LLM provider → 持久化。
 
-### 三層 LLM provider 分派
+### LLM provider 分派（動態，Admin 管理）
 
-`app/llm.py` 依環境變數 `LLM_PROVIDER`(`gemini`|`openai`)在 import 時選一個 provider,
+`app/llm.py` 在執行期從 DB `providers` 表讀取 active provider config（api_key / model / base_url），
+**不再**依環境變數在 import 時固定選 provider。Provider 透過 `/admin` 介面管理（新增、切換）。
 對上層暴露統一介面。**新增/修改 provider 必須維持這個契約**:
 
 - `stream_chat(system_prompt, messages, *, tool_specs, tool_registry)` → async 產出 `(kind, payload)`
@@ -113,8 +114,9 @@ provider(`gemini.py`/`openai_provider.py`)收到 terminal 工具的 function_cal
 
 ## 環境與慣例
 
-- 後端 secrets 在 `server/.env`(gitignored):`GEMINI_API_KEY`、`GEMINI_MODEL`、`ALLOWED_ORIGINS`;
-  openai provider 用 `OPENAI_BASE_URL`/`OPENAI_API_KEY`/`OPENAI_MODEL`。`app/data/app.db` 自動建立、gitignored。
+- 後端 secrets 在 `server/.env`(gitignored):目前只需 `ADMIN_TOKEN`、`ALLOWED_ORIGINS`。
+  LLM provider 的 api_key / model / base_url **改由 `/admin` 介面設定並存入 SQLite**,不從 env 讀取。
+  `app/data/app.db` 自動建立、gitignored。
 - 前端菜色圖透過 vite `publicDir: '../../sf-menu'` 取用(與 prototype 共用)。門市店面照放
   `sf-menu/images/stores/<店名>.webp`,由 `app/data/stores.json` 的 `image` 欄位指定;
   缺圖時前端 `StorePhoto` 自動退回帶店名首字的占位 banner(見該資料夾 README)。

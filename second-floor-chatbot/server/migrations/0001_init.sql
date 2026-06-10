@@ -1,5 +1,8 @@
 -- 初始 schema:所有核心資料表與索引。
 -- 使用 IF NOT EXISTS,可安全在既有空 DB 或首次建立時執行。
+-- BEGIN/COMMIT 確保原子性:executescript() 在執行前自動 COMMIT,
+-- 若不包裹則 schema 可能部分套用後 crash 而 _migrations 記錄未寫入。
+BEGIN;
 CREATE TABLE IF NOT EXISTS conversations (
   id          TEXT PRIMARY KEY,
   session_id  TEXT NOT NULL,
@@ -52,3 +55,4 @@ CREATE TABLE IF NOT EXISTS menu_notes (
 );
 CREATE INDEX IF NOT EXISTS idx_conv_session ON conversations(session_id);
 CREATE INDEX IF NOT EXISTS idx_msg_conv ON messages(conversation_id);
+COMMIT;

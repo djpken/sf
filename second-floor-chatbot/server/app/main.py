@@ -167,7 +167,8 @@ app.add_middleware(
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, **llm.active_info()}
+    info = llm.active_info()
+    return {"ok": bool(info.get("provider")), **info}
 
 
 def _remembered_pref_hint(prefs: dict) -> str:

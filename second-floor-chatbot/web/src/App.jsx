@@ -144,12 +144,17 @@ function App() {
       const res = await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`);
       const data = await res.json();
       setMessages((data.messages ?? []).map((m) => {
-        try {
-          if (m.role === 'booking') return { role: 'booking', booking: JSON.parse(m.content) };
-          if (m.role === 'availability') return { role: 'availability', data: JSON.parse(m.content) };
-          if (m.role === 'lookup') return { role: 'lookup', data: JSON.parse(m.content) };
-          if (m.role === 'store_card') return { role: 'store_card', storeCard: JSON.parse(m.content) };
-        } catch { /* 忽略 JSON parse 錯誤,fallback 到純文字 */ }
+        const SPECIAL_ROLES = ['booking', 'availability', 'lookup', 'store_card'];
+        if (SPECIAL_ROLES.includes(m.role)) {
+          try {
+            if (m.role === 'booking') return { role: 'booking', booking: JSON.parse(m.content) };
+            if (m.role === 'availability') return { role: 'availability', data: JSON.parse(m.content) };
+            if (m.role === 'lookup') return { role: 'lookup', data: JSON.parse(m.content) };
+            if (m.role === 'store_card') return { role: 'store_card', storeCard: JSON.parse(m.content) };
+          } catch {
+            return { role: 'model', content: m.content };
+          }
+        }
         return { role: m.role, content: m.content };
       }));
       setConversationId(id);
