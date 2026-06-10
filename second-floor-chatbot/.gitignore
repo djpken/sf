@@ -12,6 +12,8 @@ server/.env
 # Local SQLite data
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
 # Node / frontend
 node_modules/
