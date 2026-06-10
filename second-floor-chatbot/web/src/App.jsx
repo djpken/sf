@@ -698,7 +698,10 @@ function App() {
                         {s.phone && (
                           <div className="sc-row">
                             <span className="sc-label">{t(locale, 'store.phone')}</span>
-                            <a className="sc-value sc-phone" href={`tel:${s.phone}`}>{s.phone}</a>
+                            <span className="sc-value">
+                              <a className="sc-phone" href={`tel:${s.phone}`}>{s.phone}</a>
+                              {s.phone_note && <span className="sc-phone-note">（{s.phone_note}）</span>}
+                            </span>
                           </div>
                         )}
                         {s.hours && (
@@ -819,7 +822,10 @@ function App() {
           <div className="contact-store-list">
             {stores.map((s) => (
               <div key={s.name} className="contact-store-row">
-                <span className="contact-store-name">{s.name}</span>
+                <div className="contact-store-main">
+                  <span className="contact-store-name">{s.name}</span>
+                  {s.phone_note && <span className="contact-store-note">{s.phone_note}</span>}
+                </div>
                 <a className="contact-store-phone" href={`tel:${s.phone}`}>{s.phone}</a>
               </div>
             ))}

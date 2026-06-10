@@ -223,6 +223,8 @@ function Admin() {
     setStoreForm({
       _isNew: false,
       name: s.name,
+      phone: s.phone || '',
+      phone_note: s.phone_note || '',
       seating_capacity: sn.seating_capacity ?? 80,
       table_spacing: sn.table_spacing || '一般',
       has_private_room: sn.has_private_room ?? false,
@@ -253,6 +255,8 @@ function Admin() {
         await api(`/api/admin/stores/${encodeURIComponent(storeForm.name)}`, {
           method: 'PUT',
           body: JSON.stringify({
+            phone: storeForm.phone.trim(),
+            phone_note: storeForm.phone_note.trim(),
             seating_capacity: cap !== '' && cap !== null ? parseInt(cap, 10) : null,
             table_spacing: storeForm.table_spacing,
             has_private_room: storeForm.has_private_room,
@@ -493,7 +497,12 @@ function Admin() {
                       {hasMeta && <span className="admin-badge admin-badge-set">已設定</span>}
                     </div>
                     <p className="admin-muted" style={{ fontSize: 13, margin: '2px 0 2px' }}>{s.address}</p>
-                    {s.phone && <p className="admin-muted" style={{ fontSize: 13, margin: '0 0 6px' }}>{s.phone}</p>}
+                    {s.phone && (
+                      <p className="admin-muted" style={{ fontSize: 13, margin: '0 0 6px' }}>
+                        {s.phone}
+                        {s.phone_note && `（${s.phone_note}）`}
+                      </p>
+                    )}
                     {hasMeta && (
                       <dl className="admin-meta">
                         {sn.seating_capacity && <div><dt>座位</dt><dd>{sn.seating_capacity} 席</dd></div>}
@@ -743,6 +752,24 @@ function Admin() {
                 <p className="admin-muted" style={{ marginBottom: '16px', fontSize: 13 }}>
                   這些資訊會提供給 AI，讓它能回答客人關於環境和座位的問題。
                 </p>
+                <label className="admin-field">
+                  <span>電話</span>
+                  <input
+                    type="tel"
+                    value={storeForm.phone}
+                    onChange={(e) => setStoreForm({ ...storeForm, phone: e.target.value })}
+                    placeholder="如：02-2345-6789"
+                  />
+                </label>
+                <label className="admin-field">
+                  <span>電話備注</span>
+                  <input
+                    type="text"
+                    value={storeForm.phone_note}
+                    onChange={(e) => setStoreForm({ ...storeForm, phone_note: e.target.value })}
+                    placeholder="例：訂位請於營業時間來電"
+                  />
+                </label>
                 <label className="admin-field">
                   <span>座位數</span>
                   <input
