@@ -38,6 +38,7 @@ from .booking import (  # noqa: E402
     LOOKUP_RESERVATION_TOOL_SPEC,
     RESERVATION_TOOL_SPEC,
     STORE_CARD_TOOL_SPEC,
+    STORE_INFO,
     TOOL_GUIDANCE,
     TOOLS,
     build_location_hint,
@@ -134,6 +135,8 @@ class StoreNotesIn(BaseModel):
     has_outdoor: bool = False
     noise_level: str = ""
     notes: str = ""
+    phone: str | None = None       # None = 不變更;寫入 stores.json,非 DB notes
+    phone_note: str | None = None  # 電話備注說明,同上
 
 
 class StoreCreateIn(BaseModel):
@@ -615,6 +618,7 @@ async def admin_list_stores() -> dict:
             "name": name,
             "address": info.get("address", ""),
             "phone": info.get("phone", ""),
+            "phone_note": info.get("phone_note", ""),
             "notes": store_notes_map.get(name, {}),
         }
         for name, info in _STORES.items()
@@ -635,20 +639,32 @@ async def admin_create_store(body: StoreCreateIn) -> dict:
         "hours": body.hours.strip(),
     }
     _STORES[name] = new_info
+    STORE_INFO[name] = new_info  # 同步 booking 模組的店資料(它在 import 時另載一份)
 
-    def _write():
-        with open(_STORES_PATH, "w", encoding="utf-8") as f:
-            json.dump(_STORES, f, ensure_ascii=False, indent=2)
-
-    await asyncio.to_thread(_write)
+    await asyncio.to_thread(_write_stores)
     return {"ok": True, "store": {"name": name, **new_info}}
+
+
+def _write_stores() -> None:
+    with open(_STORES_PATH, "w", encoding="utf-8") as f:
+        json.dump(_STORES, f, ensure_ascii=False, indent=2)
 
 
 @app.put("/api/admin/stores/{store_name:path}", dependencies=[Depends(require_admin)])
 async def admin_update_store(store_name: str, body: StoreNotesIn) -> dict:
     if store_name not in _STORES:
         raise HTTPException(status_code=404, detail="找不到此門市")
-    notes = await asyncio.to_thread(db.upsert_store_notes, store_name, body.model_dump())
+    if body.phone is not None or body.phone_note is not None:
+        info = _STORES[store_name]
+        if body.phone is not None:
+            info["phone"] = body.phone.strip()
+        if body.phone_note is not None:
+            info["phone_note"] = body.phone_note.strip()
+        STORE_INFO[store_name] = info  # 同步 booking 模組,讓 show_store_card 立即生效
+        await asyncio.to_thread(_write_stores)
+    notes = await asyncio.to_thread(
+        db.upsert_store_notes, store_name, body.model_dump(exclude={"phone", "phone_note"})
+    )
     return {"ok": True, "notes": notes}
 
 

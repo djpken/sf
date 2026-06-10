@@ -920,6 +920,12 @@ h1, h2, p { margin: 0; }
 }
 .sc-phone:hover { text-decoration: underline; }
 
+.sc-phone-note {
+  color: var(--ds-ink3);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .sc-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1058,6 +1064,12 @@ h1, h2, p { margin: 0; }
   opacity: .35;
   cursor: not-allowed;
 }
+
+/* 串流中的停止鍵：以中性深色與送出鍵區隔，方塊圖示表示「停止」。 */
+.composer-stop {
+  background: var(--ink, #2b2b2b);
+}
+.composer-stop:hover:not(:disabled) { background: #000; }
 
 .send-arrow-icon {
   font-size: 18px;
@@ -1529,7 +1541,15 @@ h1, h2, p { margin: 0; }
   gap: 12px;
 }
 .contact-store-row + .contact-store-row { border-top: 1px solid var(--line); }
-.contact-store-name { font-size: 14px; color: var(--ink); flex: 1; }
+.contact-store-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.contact-store-name { font-size: 14px; color: var(--ink); }
+.contact-store-note { font-size: 12px; color: var(--ds-ink3); }
 .contact-store-phone {
   font-size: 14px;
   color: var(--brand);
