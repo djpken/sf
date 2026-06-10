@@ -1079,6 +1079,12 @@ h1, h2, p { margin: 0; }
   cursor: not-allowed;
 }
 
+/* 串流中的停止鍵：以中性深色與送出鍵區隔，方塊圖示表示「停止」。 */
+.composer-stop {
+  background: var(--ink, #2b2b2b);
+}
+.composer-stop:hover:not(:disabled) { background: #000; }
+
 .send-arrow-icon {
   font-size: 18px;
   font-weight: 700;

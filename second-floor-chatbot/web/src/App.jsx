@@ -62,6 +62,12 @@ function App() {
   const abortRef = useRef(null);
   const locationRef = useRef(null);      // 快取 {lat, lng}，取得失敗為 null
   const locationAskedRef = useRef(false); // 是否已嘗試請求過定位（只跳一次權限）
+  // 每段對話的完整訊息快取（含 suggestions / menuContext / 串流中內容）。
+  // 切換對話時用它還原，串流可在背景繼續寫入而不被中斷，避免切回來「暫停」。
+  const convCacheRef = useRef(new Map()); // cacheKey -> messages[]
+  const streamKeyRef = useRef(null);      // 正在串流的對話 cacheKey（新對話拿到 id 前用 tmp-*）
+  const viewKeyRef = useRef(null);        // 目前畫面顯示的對話 cacheKey
+  const tmpKeyRef = useRef(0);            // 新對話在拿到後端 id 前的暫時 key 計數器
 
   const started = messages.length > 0;
 
@@ -137,28 +143,65 @@ function App() {
     } catch { /* 列表非關鍵,失敗就略過 */ }
   }
 
+  // 更新某段對話的訊息;若正是畫面顯示的那段,同步反映到畫面。
+  function setConvMessages(key, updater) {
+    if (key == null) return;
+    const prev = convCacheRef.current.get(key) ?? [];
+    const next = typeof updater === 'function' ? updater(prev) : updater;
+    convCacheRef.current.set(key, next);
+    if (key === viewKeyRef.current) setMessages(next);
+    return next;
+  }
+
+  function parseDbMessages(rows) {
+    const SPECIAL_ROLES = ['booking', 'availability', 'lookup', 'store_card'];
+    return (rows ?? []).map((m) => {
+      if (SPECIAL_ROLES.includes(m.role)) {
+        try {
+          if (m.role === 'booking') return { role: 'booking', booking: JSON.parse(m.content) };
+          if (m.role === 'availability') return { role: 'availability', data: JSON.parse(m.content) };
+          if (m.role === 'lookup') return { role: 'lookup', data: JSON.parse(m.content) };
+          if (m.role === 'store_card') return { role: 'store_card', storeCard: JSON.parse(m.content) };
+        } catch {
+          return { role: 'model', content: m.content };
+        }
+      }
+      return { role: m.role, content: m.content };
+    });
+  }
+
+  // 新對話拿到後端 id 時,把 tmp-* 的快取改鍵成真實 id;若正在看它就同步 conversationId。
+  function adoptConversationId(realId) {
+    const oldKey = streamKeyRef.current;
+    if (oldKey && oldKey !== realId) {
+      const arr = convCacheRef.current.get(oldKey);
+      if (arr) convCacheRef.current.set(realId, arr);
+      convCacheRef.current.delete(oldKey);
+      streamKeyRef.current = realId;
+      if (viewKeyRef.current === oldKey) {
+        viewKeyRef.current = realId;
+        setConversationId(realId);
+      }
+    }
+  }
+
   async function loadConversation(id) {
-    abortRef.current?.abort();
+    // 不中斷正在進行的串流:它會在背景跑完並寫入 DB,切回來才不會「暫停」。
     setSidebarOpen(false);
     setError('');
+    viewKeyRef.current = id;
+    setConversationId(id);
+    // 已有快取(含串流中的內容、suggestions、menuContext)直接還原,不回 DB 覆蓋。
+    if (convCacheRef.current.has(id)) {
+      setMessages(convCacheRef.current.get(id));
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`);
       const data = await res.json();
-      setMessages((data.messages ?? []).map((m) => {
-        const SPECIAL_ROLES = ['booking', 'availability', 'lookup', 'store_card'];
-        if (SPECIAL_ROLES.includes(m.role)) {
-          try {
-            if (m.role === 'booking') return { role: 'booking', booking: JSON.parse(m.content) };
-            if (m.role === 'availability') return { role: 'availability', data: JSON.parse(m.content) };
-            if (m.role === 'lookup') return { role: 'lookup', data: JSON.parse(m.content) };
-            if (m.role === 'store_card') return { role: 'store_card', storeCard: JSON.parse(m.content) };
-          } catch {
-            return { role: 'model', content: m.content };
-          }
-        }
-        return { role: m.role, content: m.content };
-      }));
-      setConversationId(id);
+      const parsed = parseDbMessages(data.messages);
+      convCacheRef.current.set(id, parsed);
+      if (viewKeyRef.current === id) setMessages(parsed); // 期間若又切走則不覆蓋
     } catch {
       setError(t(locale, 'error.load'));
     }
@@ -172,6 +215,13 @@ function App() {
   async function confirmDeleteConversation(id, event) {
     event.stopPropagation();
     setPendingDeleteId(null);
+    // 刪到正在串流的那段就中止它,避免寫入已刪除的對話。
+    if (id === streamKeyRef.current) {
+      abortRef.current?.abort();
+      streamKeyRef.current = null;
+      setIsBusy(false);
+    }
+    convCacheRef.current.delete(id);
     try {
       await fetch(`${API_BASE}/api/conversations/${id}?session_id=${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
       if (id === conversationId) newChat();
@@ -181,13 +231,27 @@ function App() {
 
 
   function newChat() {
-    abortRef.current?.abort();
+    // 不中斷背景串流:讓上一段對話跑完並進歷史。只把畫面切到一個空白新對話。
+    viewKeyRef.current = null;
     setMessages([]);
     setConversationId(null);
     setDraft('');
     setError('');
-    setIsBusy(false);
     setSidebarOpen(false);
+  }
+
+  // 使用者主動停止本次回覆:中止串流並把串流中的訊息凍結(空白則移除)。
+  function stopStreaming() {
+    abortRef.current?.abort();
+    const key = streamKeyRef.current;
+    setConvMessages(key, (items) =>
+      items
+        .map((m) => (m.role === 'model' && m.streaming ? { ...m, streaming: false, timestamp: Date.now() } : m))
+        .filter((m) => !(m.role === 'model' && !m.streaming && !m.content && !m.suggestions && !m.menuContext)),
+    );
+    streamKeyRef.current = null;
+    abortRef.current = null;
+    setIsBusy(false);
   }
 
   // 首次呼叫時請求一次地理位置；成功存座標、失敗/拒絕/不支援存 null。
@@ -218,9 +282,19 @@ function App() {
     setError('');
     setDraft('');
     const userMsg = { role: 'user', content, timestamp: Date.now() };
-    const history = [...messages, userMsg];
+
+    // 決定本次串流寫入的 cacheKey:沿用對話 id,新對話先用 tmp-* 之後再改鍵成真實 id。
+    let key = conversationId;
+    if (!key) {
+      key = `tmp-${(tmpKeyRef.current += 1)}`;
+      viewKeyRef.current = key; // 立刻把畫面綁到這段新對話
+    }
+    streamKeyRef.current = key;
+
+    const base = convCacheRef.current.get(key) ?? messages;
+    const history = [...base, userMsg];
     const cleared = history.map((m) => (m.suggestions ? { ...m, suggestions: undefined } : m));
-    setMessages([...cleared, { role: 'model', content: '', streaming: true }]);
+    setConvMessages(key, [...cleared, { role: 'model', content: '', streaming: true }]);
     setIsBusy(true);
 
     const controller = new AbortController();
@@ -268,7 +342,7 @@ function App() {
           else if (payload.reservation_lookup) appendCard('lookup', payload.reservation_lookup);
           else if (payload.store_card) appendStoreCard(payload.store_card);
           else if (payload.suggestions?.ask?.length || payload.suggestions?.say?.length) attachSuggestions(payload.suggestions);
-          else if (payload.conversation) setConversationId(payload.conversation.id);
+          else if (payload.conversation) adoptConversationId(payload.conversation.id);
           else if (payload.error) throw new Error(payload.error);
         }
       }
@@ -277,15 +351,18 @@ function App() {
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError(err.message || '連線發生問題');
-      setMessages((items) => items.filter((m) => !(m.role === 'model' && m.streaming && !m.content)));
+      setConvMessages(streamKeyRef.current, (items) => items.filter((m) => !(m.role === 'model' && m.streaming && !m.content)));
     } finally {
       setIsBusy(false);
       abortRef.current = null;
+      streamKeyRef.current = null;
     }
   }
 
+  // 以下串流寫入一律針對 streamKeyRef 指向的對話;若正在看它,setConvMessages 會同步畫面,
+  // 切走時則只更新背景快取,讓串流繼續而不影響當前畫面。
   function appendDelta(delta) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       const last = next[next.length - 1];
       if (last?.role === 'model' && last.streaming) {
@@ -296,7 +373,7 @@ function App() {
   }
 
   function appendBooking(booking) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       const insertAt = next.length > 0 && next[next.length - 1].role === 'model' ? next.length - 1 : next.length;
       next.splice(insertAt, 0, { role: 'booking', booking });
@@ -305,7 +382,7 @@ function App() {
   }
 
   function appendStoreCard(storeCard) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       const insertAt = next.length > 0 && next[next.length - 1].role === 'model' ? next.length - 1 : next.length;
       next.splice(insertAt, 0, { role: 'store_card', storeCard });
@@ -315,7 +392,7 @@ function App() {
 
   // 空位查詢卡 / 訂位查詢卡共用:插在串流中的助理訊息之前。
   function appendCard(role, data) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       const insertAt = next.length > 0 && next[next.length - 1].role === 'model' ? next.length - 1 : next.length;
       next.splice(insertAt, 0, { role, data });
@@ -324,7 +401,7 @@ function App() {
   }
 
   function attachSuggestions(suggestions) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       for (let i = next.length - 1; i >= 0; i -= 1) {
         if (next[i].role === 'model') {
@@ -337,7 +414,7 @@ function App() {
   }
 
   function attachMenuContext(menuContext) {
-    setMessages((items) => {
+    setConvMessages(streamKeyRef.current, (items) => {
       const next = [...items];
       for (let i = next.length - 1; i >= 0; i -= 1) {
         if (next[i].role === 'model') {
@@ -350,7 +427,7 @@ function App() {
   }
 
   function finishStreaming() {
-    setMessages((items) =>
+    setConvMessages(streamKeyRef.current, (items) =>
       items.map((m) => (m.role === 'model' && m.streaming ? { ...m, streaming: false, timestamp: Date.now() } : m)),
     );
   }
@@ -364,11 +441,26 @@ function App() {
 
   function copyConversation() {
     const text = messages
-      .filter((m) => m.role === 'user' || m.role === 'model')
       .map((m) => {
-        const role = m.role === 'user' ? 'User' : 'Assistant';
-        return `[${role}]: ${m.content}`;
+        if (m.role === 'user') return `[User]: ${m.content}`;
+        if (m.role === 'model') {
+          let s = `[Assistant]: ${m.content}`;
+          if (m.menuContext?.length) {
+            s += `\n[相關菜色]: ${m.menuContext.map((i) => i.name).join('、')}`;
+          }
+          const ask = m.suggestions?.ask ?? [];
+          const say = m.suggestions?.say ?? [];
+          if (ask.length) s += `\n[你可能想問]: ${ask.join(' / ')}`;
+          if (say.length) s += `\n[你可能想說]: ${say.join(' / ')}`;
+          return s;
+        }
+        if (m.role === 'booking') return `[訂位卡]: ${JSON.stringify(m.booking, null, 2)}`;
+        if (m.role === 'store_card') return `[門市卡]: ${JSON.stringify(m.storeCard, null, 2)}`;
+        if (m.role === 'availability') return `[空位查詢]: ${JSON.stringify(m.data, null, 2)}`;
+        if (m.role === 'lookup') return `[訂位查詢]: ${JSON.stringify(m.data, null, 2)}`;
+        return '';
       })
+      .filter(Boolean)
       .join('\n\n');
     navigator.clipboard.writeText(text).then(() => {
       setConversationCopied(true);
@@ -879,14 +971,28 @@ function App() {
               onKeyDown={onKeyDown}
             />
             <div className="composer-toolbar">
-              <button
-                aria-label={t(locale, 'send')}
-                className="composer-submit"
-                type="submit"
-                disabled={isBusy || !draft.trim()}
-              >
-                <span className="send-arrow-icon" aria-hidden="true">↑</span>
-              </button>
+              {isBusy ? (
+                <button
+                  aria-label={t(locale, 'stop')}
+                  title={t(locale, 'stop')}
+                  className="composer-submit composer-stop"
+                  type="button"
+                  onClick={stopStreaming}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  aria-label={t(locale, 'send')}
+                  className="composer-submit"
+                  type="submit"
+                  disabled={!draft.trim()}
+                >
+                  <span className="send-arrow-icon" aria-hidden="true">↑</span>
+                </button>
+              )}
             </div>
           </div>
         </form>

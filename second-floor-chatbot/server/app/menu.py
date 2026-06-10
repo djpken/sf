@@ -25,6 +25,14 @@ MENU_INDEX: list[dict] = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
 
 SPICE_LABELS = ["不辣", "微辣", "小辣", "極辣"]
 
+# 純數字/時間 token（人數、時段、價格等）不是菜單搜尋詞,排除以免「4 個朋友」誤中
+# 「4吋蛋糕」、或「18:00」誤中描述裡的數字。
+_NUMERIC_TOKEN = re.compile(r"^[\d:：.\-]+$")
+
+
+def _is_search_token(tok: str) -> bool:
+    return bool(tok) and _NUMERIC_TOKEN.match(tok) is None
+
 
 def retrieve(
     query: str = "",
@@ -45,7 +53,7 @@ def retrieve(
 
     硬篩選(忌口/辣度)直接把不合格品項排除,模型看到的就是合格清單。
     """
-    keywords = [k for k in re.split(r"[，、。！？\s]+", query.lower()) if k]
+    keywords = [k for k in re.split(r"[，、。！？\s]+", query.lower()) if _is_search_token(k)]
 
     scored: list[tuple[int, dict]] = []
     for item in MENU_INDEX:
@@ -74,7 +82,9 @@ def retrieve(
         q_lower = query.lower()
         # 正向：token 出現在 hay 中；或反向：hay 中的詞出現在整段 query 中（處理「薯條好吃嗎」無法切分的情況）
         hay_tokens = [t for t in re.split(r"[，、。！？\s]+", hay) if t]
-        score = sum(1 for kw in keywords if kw in hay) + sum(1 for ht in hay_tokens if len(ht) >= 2 and ht in q_lower)
+        score = sum(1 for kw in keywords if kw in hay) + sum(
+            1 for ht in hay_tokens if len(ht) >= 2 and _is_search_token(ht) and ht in q_lower
+        )
         scored.append((score, item))
 
     # 穩定排序:分數高優先,同分維持菜單原順序
