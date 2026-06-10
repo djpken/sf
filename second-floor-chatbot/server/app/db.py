@@ -52,7 +52,8 @@ def _run_migrations() -> None:
         applied = {r[0] for r in conn.execute("SELECT name FROM _migrations").fetchall()}
 
         # Bootstrap:既有 DB 沒有 _migrations 表時,直接標記 0001_init 為已套用。
-        # 同時補上歷史上曾以 ad-hoc 方式新增的 api_version 欄位(如果還沒有)。
+        # 同時補上歷史上曾以 ad-hoc 方式新增的 api_version 欄位(如果還沒有),
+        # 並建立 0001_init 之後才新增的 app_settings/store_notes/menu_notes 表。
         if "conversations" in tables and not applied:
             conn.execute(
                 "INSERT OR IGNORE INTO _migrations (name, applied_at) VALUES (?, ?)",
@@ -64,6 +65,31 @@ def _run_migrations() -> None:
             }
             if "api_version" not in cols:
                 conn.execute("ALTER TABLE providers ADD COLUMN api_version TEXT")
+            # 補建可能因舊版 init() 未建立的新資料表
+            conn.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS app_settings (
+                  key    TEXT PRIMARY KEY,
+                  value  TEXT
+                );
+                CREATE TABLE IF NOT EXISTS store_notes (
+                  store_name       TEXT PRIMARY KEY,
+                  seating_capacity INTEGER,
+                  table_spacing    TEXT,
+                  has_private_room INTEGER DEFAULT 0,
+                  has_outdoor      INTEGER DEFAULT 0,
+                  noise_level      TEXT,
+                  notes            TEXT,
+                  updated_at       REAL
+                );
+                CREATE TABLE IF NOT EXISTS menu_notes (
+                  item_name        TEXT PRIMARY KEY,
+                  spice_adjustable INTEGER DEFAULT 0,
+                  notes            TEXT,
+                  updated_at       REAL
+                );
+                """
+            )
             conn.commit()
             applied = {r[0] for r in conn.execute("SELECT name FROM _migrations").fetchall()}
 
@@ -115,6 +141,16 @@ def list_conversations(session_id: str) -> list[dict]:
             (session_id,),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def conversation_owned_by(session_id: str, conversation_id: str) -> bool:
+    """確認對話屬於此 session;用於防止 IDOR 跨 session 注入。"""
+    with _conn() as c:
+        row = c.execute(
+            "SELECT 1 FROM conversations WHERE id = ? AND session_id = ?",
+            (conversation_id, session_id),
+        ).fetchone()
+    return row is not None
 
 
 def delete_conversation(session_id: str, conversation_id: str) -> None:

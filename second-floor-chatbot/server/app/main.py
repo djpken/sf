@@ -12,10 +12,12 @@ DELETE /api/profile              清除忌口記憶
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import os
 import secrets
 import time
+import urllib.parse
 from collections import defaultdict
 
 from dotenv import load_dotenv
@@ -93,6 +95,24 @@ class ChatRequest(BaseModel):
     location: Location | None = None  # 前端取得的地理位置,用於推薦最近門市
 
 
+def _validate_base_url(url: str) -> None:
+    """拒絕可能導致 SSRF 的 base_url:非 https 或指向內網/loopback IP。"""
+    if not url:
+        return
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError("base_url 必須使用 https:// 協定")
+    hostname = parsed.hostname or ""
+    try:
+        addr = ipaddress.ip_address(hostname)
+        if addr.is_private or addr.is_loopback or addr.is_link_local:
+            raise ValueError("base_url 不能指向私有或 loopback IP 位址")
+    except ValueError as exc:
+        if "base_url" in str(exc):
+            raise
+        # hostname 是 domain name,不是 IP,允許通過
+
+
 class ProviderIn(BaseModel):
     name: str = ""
     type: str = "gemini"          # 'gemini' | 'openai' | 'azure'
@@ -132,19 +152,31 @@ app = FastAPI(title="Second Floor Chatbot API")
 
 # Per-IP rate limiting (dict+TTL, 無外部依賴)
 # RATE_LIMIT=N 設定每 60 秒最多 N 次(預設 60)
+# TRUST_PROXY=1 時信任 X-Forwarded-For 最後一個 IP(由反向代理附加,無法偽造);
+# 未設定時直接使用 TCP 連線的 client IP,避免 X-Forwarded-For 偽造繞過限速。
 _RATE_WINDOW = 60.0
 _RATE_LIMIT = int(os.environ.get("RATE_LIMIT") or 60)
+_TRUST_PROXY = bool(os.environ.get("TRUST_PROXY", ""))
 _rate_store: dict[str, list[float]] = defaultdict(list)
 
 
 def _check_rate_limit(request: Request) -> None:
-    ip = request.headers.get("X-Forwarded-For", request.client.host if request.client else "unknown").split(",")[0].strip()
+    if _TRUST_PROXY:
+        xff = request.headers.get("X-Forwarded-For", "")
+        ips = [x.strip() for x in xff.split(",") if x.strip()]
+        ip = ips[-1] if ips else (request.client.host if request.client else "unknown")
+    else:
+        ip = request.client.host if request.client else "unknown"
     now = time.time()
     window_start = now - _RATE_WINDOW
     timestamps = _rate_store[ip]
-    # 清掉超出視窗的舊記錄
-    _rate_store[ip] = [t for t in timestamps if t > window_start]
-    if len(_rate_store[ip]) >= _RATE_LIMIT:
+    # 清掉超出視窗的舊記錄，並在 list 清空時移除 key 以避免記憶體洩漏
+    pruned = [t for t in timestamps if t > window_start]
+    if pruned:
+        _rate_store[ip] = pruned
+    elif ip in _rate_store:
+        del _rate_store[ip]
+    if len(_rate_store.get(ip, [])) >= _RATE_LIMIT:
         raise HTTPException(
             status_code=429,
             detail=f"請求太頻繁，請稍候 {int(_RATE_WINDOW)} 秒後再試。",
@@ -221,6 +253,11 @@ async def chat(req: ChatRequest) -> StreamingResponse:
             )
             conversation_id = conv["id"]
             conv_event = {"conversation": {**conv, "new": True}}
+        elif conversation_id:
+            # 驗證 conversation 屬於此 session,防止跨 session IDOR 注入
+            owned = await asyncio.to_thread(db.conversation_owned_by, session_id, conversation_id)
+            if not owned:
+                raise HTTPException(status_code=403, detail="conversation_id 不屬於此 session")
         if last_user:
             await asyncio.to_thread(db.append_message, conversation_id, "user", last_user)
 
@@ -289,7 +326,7 @@ async def chat(req: ChatRequest) -> StreamingResponse:
                 yield f"data: {json.dumps({'suggestions': suggestions}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as exc:  # noqa: BLE001 — 把錯誤回給前端而非 500 斷線
-            logger.exception("chat stream error: {}", exc)
+            logger.exception(f"chat stream error: {exc}")
             yield f"data: {json.dumps({'error': _friendly_error(exc, req.locale)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
@@ -372,7 +409,7 @@ def _public_provider(p: dict) -> dict:
     }
 
 
-@app.post("/api/admin/auth")
+@app.post("/api/admin/auth", dependencies=[Depends(_check_rate_limit)])
 async def admin_auth(body: AuthIn) -> dict:
     _verify_admin_token(body.token)
     return {"ok": True}
@@ -391,6 +428,11 @@ async def admin_list_providers() -> dict:
 
 @app.post("/api/admin/providers", dependencies=[Depends(require_admin)])
 async def admin_create_provider(body: ProviderIn) -> dict:
+    if body.use_custom_url and body.base_url:
+        try:
+            _validate_base_url(body.base_url)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     p = await asyncio.to_thread(db.create_provider, body.model_dump())
     # 首筆自動設為 active
     active_id = await asyncio.to_thread(db.get_setting, "active_provider_id")
@@ -401,6 +443,11 @@ async def admin_create_provider(body: ProviderIn) -> dict:
 
 @app.put("/api/admin/providers/{provider_id}", dependencies=[Depends(require_admin)])
 async def admin_update_provider(provider_id: str, body: ProviderIn) -> dict:
+    if body.use_custom_url and body.base_url:
+        try:
+            _validate_base_url(body.base_url)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     p = await asyncio.to_thread(db.update_provider, provider_id, body.model_dump())
     if not p:
         raise HTTPException(status_code=404, detail="找不到此 provider")
