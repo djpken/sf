@@ -34,6 +34,38 @@ def _is_search_token(tok: str) -> bool:
     return bool(tok) and _NUMERIC_TOKEN.match(tok) is None
 
 
+def _longest_common_substring_len(a: str, b: str) -> int:
+    """回傳 a、b 的最長連續共同子字串長度(用於判斷使用者是否點名某道菜)。"""
+    if not a or not b:
+        return 0
+    prev = [0] * (len(b) + 1)
+    best = 0
+    for i in range(1, len(a) + 1):
+        curr = [0] * (len(b) + 1)
+        for j in range(1, len(b) + 1):
+            if a[i - 1] == b[j - 1]:
+                curr[j] = prev[j - 1] + 1
+                if curr[j] > best:
+                    best = curr[j]
+        prev = curr
+    return best
+
+
+# 使用者「點名」某道菜的判定門檻:菜名與查詢的最長連續重疊 ≥ 此字數即視為點名。
+# 設 3 是為了讓「鹽水雞」「奶油麵」這類核心名也算點名(寧可放行帶標註,也別謊稱沒有)。
+_NAMED_DISH_MIN_OVERLAP = 3
+
+
+def _is_named_dish(name: str, query: str) -> bool:
+    if not query:
+        return False
+    name_l = name.lower()
+    query_l = query.lower()
+    if name_l in query_l:
+        return True
+    return _longest_common_substring_len(name_l, query_l) >= _NAMED_DISH_MIN_OVERLAP
+
+
 def retrieve(
     query: str = "",
     *,
@@ -58,25 +90,36 @@ def retrieve(
     scored: list[tuple[int, dict]] = []
     for item in MENU_INDEX:
         tags = item["tags"]
-        # hard filters
-        if no_pork and tags["pork"]:
-            continue
-        if no_beef and tags["beef"]:
-            continue
-        if no_seafood and tags["seafood"]:
-            continue
-        if max_spice is not None and tags["spice"] > max_spice:
-            continue
-        if vegetarian and tags["veg"] != vegetarian and tags["veg"] != "lacto-ovo":
-            continue
-        if no_nuts and tags["nut"]:
-            continue
-        if no_alcohol and tags["alcohol"]:
-            continue
-        if pregnant_safe and not tags["pregnant"]:
-            continue
+        # 分類屬檢索範圍(非忌口),點名也不豁免
         if category and item["category"] != category:
             continue
+
+        # 忌口/辣度硬篩選:收集違反項。一般情況直接排除;但若使用者「點名」這道菜,
+        # 改為帶衝突標註進清單,讓模型誠實說「這道菜單有、但不符您的設定」,
+        # 而非謊稱「沒有這道品項」(最傷信任)。
+        conflicts = []
+        if no_pork and tags["pork"]:
+            conflicts.append("含豬肉")
+        if no_beef and tags["beef"]:
+            conflicts.append("含牛肉")
+        if no_seafood and tags["seafood"]:
+            conflicts.append("含海鮮")
+        if max_spice is not None and tags["spice"] > max_spice:
+            conflicts.append("有辣度")
+        if vegetarian and tags["veg"] != vegetarian and tags["veg"] != "lacto-ovo":
+            conflicts.append("非素食")
+        if no_nuts and tags["nut"]:
+            conflicts.append("含堅果")
+        if no_alcohol and tags["alcohol"]:
+            conflicts.append("含酒")
+        if pregnant_safe and not tags["pregnant"]:
+            conflicts.append("孕婦不宜")
+
+        named = _is_named_dish(item["name"], query)
+        if conflicts:
+            if not named:
+                continue
+            item = {**item, "_diet_conflict": "、".join(conflicts)}
 
         hay = f"{item['name']} {item['category']} {item.get('description', '')}".lower()
         q_lower = query.lower()
@@ -85,6 +128,8 @@ def retrieve(
         score = sum(1 for kw in keywords if kw in hay) + sum(
             1 for ht in hay_tokens if len(ht) >= 2 and _is_search_token(ht) and ht in q_lower
         )
+        if named:
+            score += 100  # 點名的菜保證排進清單(即使整段菜名無法被切分而關鍵字命中為 0)
         scored.append((score, item))
 
     # 穩定排序:分數高優先,同分維持菜單原順序
@@ -118,7 +163,14 @@ def infer_opts(text: str) -> dict:
         "vegetarian", "vegan", "veggie",
     )):
         opts["vegetarian"] = "lacto-ovo"
-    if any(k in t for k in (
+    # 「可以不要辣嗎 / 能不能去辣」是詢問某道菜能否客製去辣,不是宣告本人吃全程零辣。
+    # 若帶這類能力詢問詞,就不設 max_spice 硬篩,否則微辣的指名菜會在進 prompt 前被剔除,
+    # 模型看不到而誤答「沒有這道品項」。真正想要不辣餐點的「有不辣的嗎」不含這些詞,仍正常硬篩。
+    asking_can_adjust = any(k in t for k in (
+        "可以", "能不能", "可不可以", "能否", "可否", "可調", "調整", "調成",
+        "can i", "can you", "could you", "is it possible",
+    ))
+    if not asking_can_adjust and any(k in t for k in (
         "不要辣", "完全去辣", "去辣", "不吃辣", "不辣",
         "not spicy", "no spice", "no spicy", "no chili", "mild",
     )):
@@ -158,6 +210,14 @@ def _format_item(item: dict, item_notes: dict | None = None) -> str:
     ]
     flag_str = "、".join(f for f in flags if f)
     extra_parts = []
+    conflict = item.get("_diet_conflict")
+    if conflict:
+        # 客人點名了這道菜,但它不符合客人設定(忌口/辣度)。菜單確實有提供,
+        # 務必據實說明「這道有、但…」,不可說「沒有這道品項」;同時別主動推薦它。
+        extra_parts.append(
+            f"⚠️ 此品項菜單有提供,但{conflict},不符合客人目前的飲食設定;"
+            f"請據實說明(勿說查無此品項),並改推薦合適的選擇,勿主動推薦本品項"
+        )
     if can_adjust and spice == "不辣":
         extra_parts.append("可依需求調整辣度")
     if item_notes and item_notes.get("notes"):
