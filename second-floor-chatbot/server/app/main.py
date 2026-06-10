@@ -42,7 +42,7 @@ from .booking import (  # noqa: E402
     TOOLS,
     build_location_hint,
 )
-from .menu import MENU_INDEX, build_system_prompt, infer_opts, retrieve  # noqa: E402
+from .menu import DEFAULT_BEHAVIOR_RULES, MENU_INDEX, build_system_prompt, infer_opts, retrieve  # noqa: E402
 
 _STORES_PATH = os.path.join(os.path.dirname(__file__), "data", "stores.json")
 with open(_STORES_PATH, encoding="utf-8") as _f:
@@ -231,12 +231,21 @@ async def chat(req: ChatRequest) -> StreamingResponse:
     items = retrieve(last_user, max_items=24, **retrieve_opts)
     # 只在查詢有關鍵字命中時才顯示相關菜色 chips（min_score=1 過濾純無關詢問）
     menu_ctx_items = retrieve(last_user, max_items=8, min_score=1, **retrieve_opts)
-    menu_notes_map, store_notes_map = await asyncio.gather(
+    menu_notes_map, store_notes_map, behavior_rules, qa_pairs = await asyncio.gather(
         asyncio.to_thread(db.list_menu_notes),
         asyncio.to_thread(db.list_store_notes),
+        asyncio.to_thread(db.get_setting, _BEHAVIOR_RULES_KEY),
+        asyncio.to_thread(db.list_qa_pairs),
     )
     system_prompt = (
-        build_system_prompt(items, locale=req.locale, menu_notes=menu_notes_map, store_notes=store_notes_map)
+        build_system_prompt(
+            items,
+            locale=req.locale,
+            menu_notes=menu_notes_map,
+            store_notes=store_notes_map,
+            behavior_rules=behavior_rules,
+            qa_pairs=qa_pairs,
+        )
         + _remembered_pref_hint(profile)
         + TOOL_GUIDANCE
     )
@@ -515,6 +524,7 @@ async def get_stores():
 
 _CONTACT_PHONE_KEY = "contact_phone"
 _CONTACT_NOTE_KEY = "contact_note"
+_BEHAVIOR_RULES_KEY = "behavior_rules"
 
 
 @app.get("/api/settings/contact")
@@ -534,6 +544,63 @@ class ContactSettingRequest(BaseModel):
 async def set_contact(req: ContactSettingRequest, _=Depends(require_admin)):
     await asyncio.to_thread(db.set_setting, _CONTACT_PHONE_KEY, req.phone.strip())
     await asyncio.to_thread(db.set_setting, _CONTACT_NOTE_KEY, req.note.strip())
+    return {"ok": True}
+
+
+# ─── 行為守則(system prompt 可編輯區) ────────────────────────────────────────
+
+class BehaviorRulesRequest(BaseModel):
+    rules: str = ""
+
+
+@app.get("/api/admin/settings/behavior-rules", dependencies=[Depends(require_admin)])
+async def get_behavior_rules():
+    saved = await asyncio.to_thread(db.get_setting, _BEHAVIOR_RULES_KEY)
+    return {"rules": saved or "", "default": DEFAULT_BEHAVIOR_RULES}
+
+
+@app.put("/api/admin/settings/behavior-rules", dependencies=[Depends(require_admin)])
+async def set_behavior_rules(req: BehaviorRulesRequest):
+    await asyncio.to_thread(db.set_setting, _BEHAVIOR_RULES_KEY, req.rules.strip())
+    return {"ok": True}
+
+
+# ─── 指定問答 Q&A(類 skills 的 trigger→answer) ─────────────────────────────
+
+class QaPairRequest(BaseModel):
+    question: str
+    answer: str
+    enabled: bool = True
+    sort_order: int = 0
+
+
+@app.get("/api/admin/qa", dependencies=[Depends(require_admin)])
+async def list_qa():
+    pairs = await asyncio.to_thread(db.list_qa_pairs)
+    return {"pairs": pairs}
+
+
+@app.post("/api/admin/qa", dependencies=[Depends(require_admin)])
+async def create_qa(req: QaPairRequest):
+    if not req.question.strip() or not req.answer.strip():
+        raise HTTPException(status_code=400, detail="問題與回答都不可空白")
+    pair = await asyncio.to_thread(db.create_qa_pair, req.model_dump())
+    return {"ok": True, "pair": pair}
+
+
+@app.put("/api/admin/qa/{qa_id}", dependencies=[Depends(require_admin)])
+async def update_qa(qa_id: str, req: QaPairRequest):
+    if not req.question.strip() or not req.answer.strip():
+        raise HTTPException(status_code=400, detail="問題與回答都不可空白")
+    pair = await asyncio.to_thread(db.update_qa_pair, qa_id, req.model_dump())
+    if pair is None:
+        raise HTTPException(status_code=404, detail="找不到此問答")
+    return {"ok": True, "pair": pair}
+
+
+@app.delete("/api/admin/qa/{qa_id}", dependencies=[Depends(require_admin)])
+async def delete_qa(qa_id: str):
+    await asyncio.to_thread(db.delete_qa_pair, qa_id)
     return {"ok": True}
 
 

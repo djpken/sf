@@ -433,3 +433,73 @@ def upsert_menu_note(item_name: str, data: dict) -> dict:
             "SELECT * FROM menu_notes WHERE item_name = ?", (item_name,)
         ).fetchone()
     return {"spice_adjustable": bool(row["spice_adjustable"]), "notes": row["notes"] or ""}
+
+
+# ─── qa_pairs(admin 設計的指定問答) ──────────────────────────────────────────
+
+def _row_to_qa(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "question": row["question"] or "",
+        "answer": row["answer"] or "",
+        "enabled": bool(row["enabled"]),
+        "sort_order": row["sort_order"] or 0,
+        "updated_at": row["updated_at"],
+    }
+
+
+def list_qa_pairs() -> list[dict]:
+    """回傳所有問答對,依 sort_order、建立順序排序。"""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM qa_pairs ORDER BY sort_order ASC, updated_at ASC"
+        ).fetchall()
+    return [_row_to_qa(r) for r in rows]
+
+
+def get_qa_pair(qa_id: str) -> dict | None:
+    with _conn() as c:
+        row = c.execute("SELECT * FROM qa_pairs WHERE id = ?", (qa_id,)).fetchone()
+    return _row_to_qa(row) if row else None
+
+
+def create_qa_pair(data: dict) -> dict:
+    qa_id = uuid.uuid4().hex
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO qa_pairs (id, question, answer, enabled, sort_order, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                qa_id,
+                (data.get("question") or "").strip(),
+                (data.get("answer") or "").strip(),
+                1 if data.get("enabled", True) else 0,
+                int(data.get("sort_order") or 0),
+                time.time(),
+            ),
+        )
+    return get_qa_pair(qa_id)
+
+
+def update_qa_pair(qa_id: str, data: dict) -> dict | None:
+    if get_qa_pair(qa_id) is None:
+        return None
+    with _conn() as c:
+        c.execute(
+            "UPDATE qa_pairs SET question = ?, answer = ?, enabled = ?,"
+            " sort_order = ?, updated_at = ? WHERE id = ?",
+            (
+                (data.get("question") or "").strip(),
+                (data.get("answer") or "").strip(),
+                1 if data.get("enabled", True) else 0,
+                int(data.get("sort_order") or 0),
+                time.time(),
+                qa_id,
+            ),
+        )
+    return get_qa_pair(qa_id)
+
+
+def delete_qa_pair(qa_id: str) -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM qa_pairs WHERE id = ?", (qa_id,))

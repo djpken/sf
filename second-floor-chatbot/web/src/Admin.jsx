@@ -49,6 +49,19 @@ function Admin() {
   const [contactError, setContactError] = useState('');
   const [contactSaved, setContactSaved] = useState(false);
 
+  // ─── 行為守則 tab state ──────────────────────────────────────
+  const [rulesText, setRulesText] = useState('');
+  const [rulesDefault, setRulesDefault] = useState('');
+  const [rulesBusy, setRulesBusy] = useState(false);
+  const [rulesError, setRulesError] = useState('');
+  const [rulesSaved, setRulesSaved] = useState(false);
+
+  // ─── Q&A tab state ──────────────────────────────────────────
+  const [qaPairs, setQaPairs] = useState([]);
+  const [qaForm, setQaForm] = useState(null);
+  const [qaBusy, setQaBusy] = useState(false);
+  const [qaError, setQaError] = useState('');
+
   // ─── api helper ─────────────────────────────────────────────
   async function api(path, opts = {}) {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -345,11 +358,119 @@ function Admin() {
     }
   }
 
+  // ─── 行為守則 handlers ───────────────────────────────────────
+  async function loadRules() {
+    try {
+      const data = await api('/api/admin/settings/behavior-rules');
+      setRulesDefault(data.default || '');
+      // 後台未設定時,以預設值帶入,讓 admin 從預設開始編輯
+      setRulesText((data.rules && data.rules.trim()) ? data.rules : (data.default || ''));
+      setRulesError('');
+    } catch (e) {
+      setRulesError(e.message);
+    }
+  }
+
+  async function saveRules(e) {
+    e.preventDefault();
+    setRulesBusy(true);
+    setRulesError('');
+    setRulesSaved(false);
+    try {
+      await api('/api/admin/settings/behavior-rules', {
+        method: 'PUT',
+        body: JSON.stringify({ rules: rulesText }),
+      });
+      setRulesSaved(true);
+      setTimeout(() => setRulesSaved(false), 3000);
+    } catch (e) {
+      setRulesError(e.message);
+    } finally {
+      setRulesBusy(false);
+    }
+  }
+
+  function resetRulesToDefault() {
+    setRulesText(rulesDefault);
+    setRulesSaved(false);
+  }
+
+  // ─── Q&A handlers ────────────────────────────────────────────
+  async function loadQa() {
+    try {
+      const data = await api('/api/admin/qa');
+      setQaPairs(data.pairs || []);
+      setQaError('');
+    } catch (e) {
+      setQaError(e.message);
+    }
+  }
+
+  function openQaCreate() {
+    setQaForm({ _isNew: true, id: null, question: '', answer: '', enabled: true });
+  }
+
+  function openQaEdit(p) {
+    setQaForm({ _isNew: false, id: p.id, question: p.question, answer: p.answer, enabled: p.enabled });
+  }
+
+  async function saveQa(e) {
+    e.preventDefault();
+    if (!qaForm.question.trim() || !qaForm.answer.trim()) {
+      setQaError('問題與回答都不可空白');
+      return;
+    }
+    setQaBusy(true);
+    setQaError('');
+    try {
+      const body = JSON.stringify({
+        question: qaForm.question,
+        answer: qaForm.answer,
+        enabled: qaForm.enabled,
+      });
+      if (qaForm._isNew) {
+        await api('/api/admin/qa', { method: 'POST', body });
+      } else {
+        await api(`/api/admin/qa/${qaForm.id}`, { method: 'PUT', body });
+      }
+      setQaForm(null);
+      await loadQa();
+    } catch (e) {
+      setQaError(e.message);
+    } finally {
+      setQaBusy(false);
+    }
+  }
+
+  async function toggleQa(p) {
+    try {
+      await api(`/api/admin/qa/${p.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ question: p.question, answer: p.answer, enabled: !p.enabled }),
+      });
+      await loadQa();
+    } catch (e) {
+      setQaError(e.message);
+    }
+  }
+
+  async function removeQa(p) {
+    if (!confirm(`確定刪除這條問答?\n\n「${p.question}」`)) return;
+    try {
+      await api(`/api/admin/qa/${p.id}`, { method: 'DELETE' });
+      await loadQa();
+    } catch (e) {
+      setQaError(e.message);
+    }
+  }
+
   // ─── Load data on tab switch ─────────────────────────────────
   useEffect(() => {
     if (!authed) return;
     if (activeTab === 'stores') { loadStores(); loadContact(); }
     if (activeTab === 'menu') loadMenu();
+    if (activeTab === 'prompt') loadRules();
+    if (activeTab === 'qa') loadQa();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, authed]);
 
@@ -396,6 +517,8 @@ function Admin() {
       <div className="admin-tabs">
         {[
           { key: 'providers', label: 'Provider 設定' },
+          { key: 'prompt',    label: '行為守則' },
+          { key: 'qa',        label: '問答集 Q&A' },
           { key: 'stores',    label: '分店 & 聯絡' },
           { key: 'menu',      label: '菜單備注' },
         ].map(({ key, label }) => (
@@ -463,6 +586,82 @@ function Admin() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ══ 行為守則 Tab ══ */}
+      {activeTab === 'prompt' && (
+        <div className="admin-tab-content">
+          <p className="admin-muted" style={{ marginBottom: '16px' }}>
+            這段文字會直接寫進 AI 的 system prompt「行為守則」區段，用來規範它的回答方式
+            （例如只服務貳樓相關話題、不捏造資料等）。一行一條規則，修改後立即對新的對話生效。
+          </p>
+          {rulesError && <div className="admin-error admin-banner">{rulesError}</div>}
+          <form onSubmit={saveRules}>
+            <label className="admin-field">
+              <span>行為守則內容</span>
+              <textarea
+                value={rulesText}
+                onChange={(e) => { setRulesText(e.target.value); setRulesSaved(false); }}
+                rows={16}
+                style={{ fontFamily: 'inherit', lineHeight: 1.7 }}
+                placeholder="- 只服務貳樓相關話題…"
+              />
+            </label>
+            {rulesSaved && <div className="admin-success">已儲存</div>}
+            <div className="admin-modal-actions" style={{ marginTop: '12px' }}>
+              <button
+                type="button"
+                className="admin-btn"
+                onClick={resetRulesToDefault}
+                disabled={rulesBusy || rulesText === rulesDefault}
+              >
+                還原預設
+              </button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={rulesBusy}>
+                {rulesBusy ? '儲存中…' : '儲存'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ══ 問答集 Q&A Tab ══ */}
+      {activeTab === 'qa' && (
+        <div className="admin-tab-content">
+          <p className="admin-muted" style={{ marginBottom: '16px' }}>
+            設定「指定問答」：當客人問到某類問題時，AI 會優先依你寫好的回答作答（可用自然口吻轉述，
+            但內容以你設定的為準）。關閉的條目會保留但不套用。
+          </p>
+          {qaError && <div className="admin-error admin-banner">{qaError}</div>}
+          <div className="admin-toolbar">
+            <button className="admin-btn admin-btn-primary" onClick={openQaCreate}>+ 新增問答</button>
+          </div>
+          <div className="admin-list">
+            {qaPairs.length === 0 && (
+              <div className="admin-empty">還沒有任何指定問答，點「+ 新增問答」開始設定。</div>
+            )}
+            {qaPairs.map((p) => (
+              <div key={p.id} className="admin-card">
+                <div className="admin-card-main">
+                  <div className="admin-card-title">
+                    <strong>{p.question}</strong>
+                    {!p.enabled && <span className="admin-badge">已停用</span>}
+                  </div>
+                  <p className="admin-muted" style={{ fontSize: 13, margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
+                    {p.answer}
+                  </p>
+                </div>
+                <div className="admin-card-actions">
+                  <button className="admin-btn" onClick={() => toggleQa(p)}>
+                    {p.enabled ? '停用' : '啟用'}
+                  </button>
+                  <button className="admin-btn" onClick={() => openQaEdit(p)}>編輯</button>
+                  <button className="admin-btn admin-btn-danger" onClick={() => removeQa(p)}>刪除</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -857,6 +1056,55 @@ function Admin() {
               <button type="button" className="admin-btn" onClick={() => setMenuForm(null)} disabled={menuBusy}>取消</button>
               <button type="submit" className="admin-btn admin-btn-primary" disabled={menuBusy}>
                 {menuBusy ? '儲存中…' : '儲存'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ══ Q&A 編輯 Modal ══ */}
+      {qaForm && (
+        <div className="admin-modal-overlay" onClick={() => !qaBusy && setQaForm(null)}>
+          <form className="admin-modal" onClick={(e) => e.stopPropagation()} onSubmit={saveQa}>
+            <h3>{qaForm._isNew ? '新增指定問答' : '編輯指定問答'}</h3>
+
+            <label className="admin-field">
+              <span>問題 / 觸發情境</span>
+              <textarea
+                value={qaForm.question}
+                onChange={(e) => setQaForm({ ...qaForm, question: e.target.value })}
+                placeholder="如：有沒有停車場？／可以帶寵物嗎？／低消是多少？"
+                rows={2}
+              />
+            </label>
+
+            <label className="admin-field">
+              <span>指定回答</span>
+              <textarea
+                value={qaForm.answer}
+                onChange={(e) => setQaForm({ ...qaForm, answer: e.target.value })}
+                placeholder="客人問到上述情境時，AI 應依這段內容回答。"
+                rows={5}
+              />
+            </label>
+
+            <div className="admin-field">
+              <label className="admin-checkbox">
+                <input
+                  type="checkbox"
+                  checked={qaForm.enabled}
+                  onChange={(e) => setQaForm({ ...qaForm, enabled: e.target.checked })}
+                />
+                <span>啟用（套用到對話）</span>
+              </label>
+            </div>
+
+            {qaError && <div className="admin-error">{qaError}</div>}
+
+            <div className="admin-modal-actions">
+              <button type="button" className="admin-btn" onClick={() => setQaForm(null)} disabled={qaBusy}>取消</button>
+              <button type="submit" className="admin-btn admin-btn-primary" disabled={qaBusy}>
+                {qaBusy ? '儲存中…' : '儲存'}
               </button>
             </div>
           </form>

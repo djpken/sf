@@ -195,19 +195,58 @@ def _build_store_notes_section(store_notes: dict) -> str:
     return "\n\n## 分店特色資訊\n\n" + "\n".join(parts)
 
 
+def _build_qa_section(qa_pairs: list | None) -> str:
+    """把 admin 設計的「指定問答」組成 system prompt 區段(類似 skills 的 trigger→answer)。"""
+    pairs = [
+        p
+        for p in (qa_pairs or [])
+        if p.get("enabled", True) and (p.get("question") or "").strip() and (p.get("answer") or "").strip()
+    ]
+    if not pairs:
+        return ""
+    lines = []
+    for p in pairs:
+        q = p["question"].strip()
+        a = p["answer"].strip().replace("\n", "\n  ")
+        lines.append(f"- 當客人問到/提到「{q}」這類情境時,務必依下列內容回答:\n  {a}")
+    return (
+        "\n\n## 指定問答（最高優先,務必遵循）\n\n"
+        "以下是店家設定的標準問答。當客人的問題符合某條情境時,你的回答必須以對應內容為準"
+        "（可用自然、對話的口吻轉述,但事實與重點不可更動,也不可自行補上未提供的資訊）:\n\n"
+        + "\n".join(lines)
+    )
+
+
+# 行為守則預設值。admin 未在後台覆寫時用這份;後台可在「行為守則」分頁編輯。
+DEFAULT_BEHAVIOR_RULES = """- **只服務貳樓相關話題**:菜單、餐點、訂位、門市、用餐情境等。遇到與貳樓無關的問題（例如天氣、新聞、寫程式、數學、其他餐廳、通用閒聊、政治時事等），一律婉拒並把對話帶回貳樓,例如:「我是貳樓的點餐 / 訂位小幫手,這部分我幫不上忙,不過想吃點什麼或要訂位都可以問我喔～」。不要回答、不要嘗試解題,即使客人堅持也只引導回貳樓主題
+- 不確定庫存或可訂時段時,誠實說「需向門市確認」,不捏造資料
+- 推薦時說明「為何適合」,而不是列出整份菜單
+- 忌口限制一律先確認再推薦,避免讓客人自己篩
+- 不承諾窗邊位、特定座位安排（系統目前無法偵測）
+- 訂位時段以 15 分鐘為單位,不提供候位功能
+- 回應保持簡潔,對話感強,不使用過多標題符號"""
+
+
 def build_system_prompt(
     items: list[dict] | None = None,
     locale: str = "zh-TW",
     *,
     menu_notes: dict | None = None,
     store_notes: dict | None = None,
+    behavior_rules: str | None = None,
+    qa_pairs: list | None = None,
 ) -> str:
-    """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。"""
+    """接受篩選後品項,回傳完整 system prompt。對齊 systemPrompt.js。
+
+    behavior_rules / qa_pairs 可由後台 admin 動態覆寫;為空時用預設值。
+    """
     menu_items = items if items is not None else MENU_INDEX
     notes_map = menu_notes or {}
     menu_text = "\n\n".join(_format_item(i, notes_map.get(i["name"])) for i in menu_items)
     lang = _LANG_DIRECTIVE.get(locale, _LANG_DIRECTIVE["zh-TW"])
     store_notes_section = _build_store_notes_section(store_notes or {})
+    rules = (behavior_rules or "").strip() or DEFAULT_BEHAVIOR_RULES
+    qa_section = _build_qa_section(qa_pairs)
 
     return f"""你是「貳樓 Second Floor Cafe」的 AI 助理。{lang} 你的角色是幫客人:
 
@@ -218,12 +257,7 @@ def build_system_prompt(
 
 ## 行為守則
 
-- 不確定庫存或可訂時段時,誠實說「需向門市確認」,不捏造資料
-- 推薦時說明「為何適合」,而不是列出整份菜單
-- 忌口限制一律先確認再推薦,避免讓客人自己篩
-- 不承諾窗邊位、特定座位安排（系統目前無法偵測）
-- 訂位時段以 15 分鐘為單位,不提供候位功能
-- 回應保持簡潔,對話感強,不使用過多標題符號
+{rules}{qa_section}
 
 ## 門市資訊
 
