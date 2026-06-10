@@ -348,9 +348,8 @@ function Admin() {
   // ─── Load data on tab switch ─────────────────────────────────
   useEffect(() => {
     if (!authed) return;
-    if (activeTab === 'stores') loadStores();
+    if (activeTab === 'stores') { loadStores(); loadContact(); }
     if (activeTab === 'menu') loadMenu();
-    if (activeTab === 'contact') loadContact();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, authed]);
 
@@ -398,9 +397,8 @@ function Admin() {
       <div className="admin-tabs">
         {[
           { key: 'providers', label: 'Provider 設定' },
-          { key: 'stores',    label: '分店資訊' },
+          { key: 'stores',    label: '分店 & 聯絡' },
           { key: 'menu',      label: '菜單備注' },
-          { key: 'contact',   label: '聯絡方式' },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -495,7 +493,8 @@ function Admin() {
                       <strong>{s.name}</strong>
                       {hasMeta && <span className="admin-badge admin-badge-set">已設定</span>}
                     </div>
-                    <p className="admin-muted" style={{ fontSize: 13, margin: '2px 0 6px' }}>{s.address}</p>
+                    <p className="admin-muted" style={{ fontSize: 13, margin: '2px 0 2px' }}>{s.address}</p>
+                    {s.phone && <p className="admin-muted" style={{ fontSize: 13, margin: '0 0 6px' }}>{s.phone}</p>}
                     {hasMeta && (
                       <dl className="admin-meta">
                         {sn.seating_capacity && <div><dt>座位</dt><dd>{sn.seating_capacity} 席</dd></div>}
@@ -513,6 +512,40 @@ function Admin() {
                 </div>
               );
             })}
+          </div>
+
+          {/* ── 總客服電話 ── */}
+          <div style={{ borderTop: '1px solid var(--line)', marginTop: '24px', paddingTop: '20px' }}>
+            <p className="admin-muted" style={{ marginBottom: '14px' }}>
+              聊天介面「聯絡電話」按鈕顯示的總客服電話（補充分店電話之外的集中聯絡管道）。
+            </p>
+            <form className="admin-contact-form" onSubmit={saveContact}>
+              <div className="admin-field">
+                <label>客服電話</label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => { setContactPhone(e.target.value); setContactSaved(false); }}
+                  placeholder="02-xxxx-xxxx"
+                />
+              </div>
+              <div className="admin-field">
+                <label>備注說明</label>
+                <input
+                  type="text"
+                  value={contactNote}
+                  onChange={(e) => { setContactNote(e.target.value); setContactSaved(false); }}
+                  placeholder="例：週一至週五 9:00–18:00"
+                />
+              </div>
+              {contactError && <div className="admin-error">{contactError}</div>}
+              {contactSaved && <div className="admin-success">已儲存</div>}
+              <div style={{ marginTop: '12px' }}>
+                <button type="submit" className="admin-btn admin-btn-primary" disabled={contactBusy}>
+                  {contactBusy ? '儲存中…' : '儲存'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -831,41 +864,6 @@ function Admin() {
         </div>
       )}
 
-      {/* ══ Contact Tab ══ */}
-      {activeTab === 'contact' && (
-        <div className="admin-tab-content">
-          <p className="admin-muted" style={{ marginBottom: '16px' }}>
-            顯示在聊天介面底部的客服聯絡資訊。
-          </p>
-          <form className="admin-contact-form" onSubmit={saveContact}>
-            <div className="admin-field">
-              <label>客服電話</label>
-              <input
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => { setContactPhone(e.target.value); setContactSaved(false); }}
-                placeholder="02-xxxx-xxxx"
-              />
-            </div>
-            <div className="admin-field">
-              <label>備注說明</label>
-              <input
-                type="text"
-                value={contactNote}
-                onChange={(e) => { setContactNote(e.target.value); setContactSaved(false); }}
-                placeholder="例：週一至週五 9:00–18:00"
-              />
-            </div>
-            {contactError && <div className="admin-error">{contactError}</div>}
-            {contactSaved && <div className="admin-success">已儲存</div>}
-            <div style={{ marginTop: '12px' }}>
-              <button type="submit" className="admin-btn admin-btn-primary" disabled={contactBusy}>
-                {contactBusy ? '儲存中…' : '儲存'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
